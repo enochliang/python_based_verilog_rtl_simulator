@@ -496,7 +496,6 @@ class SimulatorLoadLogic(AstDumpSigList,AstNodeClassify):
         self.logic_value_list = []
 
         for idx in range(len(self.varname_list)):
-            print(self.varname_list[idx], logic_value_list[idx])
             self.logic_value_list.append( (self.varname_list[idx], logic_value_list[idx]) )
 
 
@@ -547,6 +546,7 @@ class SimulatorExecute(SimulatorLoadLogic):
             self.execute(child_node)
 
     def execute(self,node):
+        print(node.tag)
         if "assign" in node.tag:
             self.execute_assign(node)
         else:
@@ -584,13 +584,30 @@ class SimulatorCompute(SimulatorExecute):
     def __init__(self,ast):
         SimulatorExecute.__init__(self,ast)
 
+    def get_value(self,node):
+        if node is str:
+            return node
+        else:
+            return node.value
+
     def compute(self,node):
+        print(node.tag)
         width = node.width
-        if node.tag in self.op__2_port:
+        if node.tag == "varref":
+            ref_id = node.ref_id
+            var_node = self.ast_node_list[ref_id]
+            return var_node
+        elif node.tag == "arraysel":
+            sel_node = self.get_node(node.children[1])
+            idx = int(self.get_value(self.compute(sel_node)),2)
+            return self.get_node(node.children[0]).children[idx]
+        elif node.tag == "sel":
+            pass
+        elif node.tag in self.op__2_port:
             left_node = self.get_node(node.children[0])
             right_node = self.get_node(node.children[1])
-            r_value = self.compute(right_node)
-            l_value = self.compute(left_node)
+            r_value = self.get_value(self.compute(right_node))
+            l_value = self.get_value(self.compute(left_node))
             r_value = r_value.replace("z","x")
             l_value = l_value.replace("z","x")
             if "x" in r_value+l_value:
@@ -658,6 +675,7 @@ class SimulatorCompute(SimulatorExecute):
         return result
 
     def ast_or(self,lv,rv,width:int):
+        print(lv,rv)
         result = ""
         for idx in range(width):
             result = result + self._or(rv[idx],lv[idx])
@@ -845,10 +863,10 @@ class SimulatorCompute(SimulatorExecute):
     def ast_concat(self,lv,rv):
         return lv+rv
 
-    def check_len(s:str,l:int):
+    def check_len(self,s:str,l:int):
         return len(s) == l
 
-    def check_width(result:str,width:int):
+    def check_width(self,result:str,width:int):
         if not self.check_len(s,l):
             raise SimulationError("result width doesn't match the node output width.",0)
 
