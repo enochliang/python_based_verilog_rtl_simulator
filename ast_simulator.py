@@ -12,6 +12,13 @@ class Verilog_AST_Construction_Exception(Exception):
     def __str__(self):
         return f"{self.args[0]} (Error Code: {self.error_code})"
 
+class SimulationError(Exception):
+    def __init__(self, message, error_code):
+        super().__init__(message)
+        self.error_code = error_code
+
+    def __str__(self):
+        return f"{self.args[0]} (Error Code: {self.error_code})"
 
 class Verilog_AST_Base_Node:
     def __init__(self):
@@ -255,6 +262,7 @@ class AstConstructAddVar(AstArrayFlatten):
         self.output(self.ast)
 
         self._map__varrootname_2_id = {}
+        self._map__varname_2_id = {}
 
     def append_var_node(self):
         print("start adding <var> nodes into ast... ")
@@ -288,6 +296,10 @@ class AstConstructAddVar(AstArrayFlatten):
         new_var_node.name = name
         new_var_node.children = children_id
         self.ast_node_list.append(new_var_node)
+
+        if new_var_node.tag == "var":
+            self._map__varname_2_id[name] = new_node_id
+
         return new_node_id
 
 class AstConstructAddTree(AstConstructAddVar):
@@ -373,8 +385,6 @@ class AstConstruct(AstConstructAddTree):
         self.append_ast_node()
         self.count_xml_ast_node()
         self.count_my_ast_node()
-
-
 
     def count_xml_ast_node(self):
         self.count_xml_var_node()
@@ -463,13 +473,38 @@ class SimulatorLoadLogic(AstDumpSigList,AstNodeClassify):
     def __init__(self,ast):
         AstDumpSigList.__init__(self,ast)
         AstNodeClassify.__init__(self)
-        
+       
+
         self.logic_value_file_dir = "../picorv32/pattern/"
         self.logic_value_file_head = "FaultFree_Signal_Value_C"
         self.logic_value_file_tail = ".txt"
+        self.load_ordered_varname()
 
-    def load_logic_value(self):
-        pass
+    def load_ordered_varname(self):
+        self.varname_list = []
+        f = open("./sig_list/graph_sig_dict.json","r")
+        for varname in json.load(f).keys():
+            self.varname_list.append(varname)
+        f.close()
+
+    def load_logic_value_file(self,cycle,width:int=7):
+        target_filename = self.logic_value_file_dir + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
+        f = open(target_filename,"r")
+        logic_value_list = f.readlines()
+        logic_value_list = [value.strip() for value in logic_value_list]
+        f.close()
+        self.logic_value_list = []
+
+        for idx in range(len(self.varname_list)):
+            print(self.varname_list[idx], logic_value_list[idx])
+            self.logic_value_list.append( (self.varname_list[idx], logic_value_list[idx]) )
+
+
+    def load_logic_value(self,cycle,width:int=7):
+        self.load_logic_value_file(cycle,width)
+        for varname, value in self.logic_value_list:
+            var_id = self._map__varname_2_id[varname]
+            self.ast_node_list[var_id].value = value
 
 
 class SimulatorExecute(SimulatorLoadLogic):
@@ -619,24 +654,28 @@ class SimulatorCompute(SimulatorExecute):
         result = ""
         for idx in range(width):
             result = result + self._and(rv[idx],lv[idx])
+        self.check_width(result,width)
         return result
 
     def ast_or(self,lv,rv,width:int):
         result = ""
         for idx in range(width):
             result = result + self._or(rv[idx],lv[idx])
+        self.check_width(result,width)
         return result
 
     def ast_xor(self,lv,rv,width:int):
         result = ""
         for idx in range(width):
             result = result + self._xor(rv[idx],lv[idx])
+        self.check_width(result,width)
         return result
 
     def ast_not(iv):
         result = ""
         for idx in range(width):
             result = result + self._not(iv[idx])
+        self.check_width(result,width)
         return result
 
     def _and(self,lv,rv):
@@ -687,7 +726,45 @@ class SimulatorCompute(SimulatorExecute):
                 return "1"
 
     def ast_shiftl(self,lv,rv,width:int):
+        if "x" in rv:
+            result = "x"*width
+        else:
+            offset = int(rv,2)
+            result = lv[offset:] + "0"*offset
+        self.check_width(result,width)
+        return result
 
+    def ast_shiftr(self,lv,rv,width:int):
+        if "x" in rv:
+            result = "x"*width
+        else:
+            offset = int(rv,2)
+            result = "0"*offset + lv[:-(offset)]
+        self.check_width(result,width)
+        return result
+
+
+    def _half_add(self,lv,rv,carry):
+        if "x" in lv+rv+carry:
+            if (lv+rv+carry).find("1") == 0:
+                new_carry = "0"
+            elif (lv+rv+carry).find("1") == 1:
+                new_carry = "x"
+            elif (lv+rv+carry).find("1") > 1:
+                new_carry = "1"
+            result = "x"
+        else:
+            if (lv+rv+carry).find("1")%2 == 1:
+                result = "1"
+            else:
+                result = "0"
+            if (lv+rv+carry).find("1") > 1:
+                new_carry = "1"
+            else:
+                new_carry = "0"
+        return result, new_carry
+
+            
 
     def ast_add(self,lv,rv,width:int):
         if rv[0] == "1":
@@ -765,17 +842,15 @@ class SimulatorCompute(SimulatorExecute):
         else:
             return "1"
 
-
-
     def ast_concat(self,lv,rv):
         return lv+rv
 
-    #def eq_len(x:str,y:str):
-    #    return len(x) == len(y)
+    def check_len(s:str,l:int):
+        return len(s) == l
 
-    #def check_eq_len(x:str,y:str):
-    #    if not self.eq_len(x,y):
-    #        raise 
+    def check_width(result:str,width:int):
+        if not self.check_len(s,l):
+            raise SimulationError("result width doesn't match the node output width.",0)
 
     def assign(self,node):
         pass
@@ -803,6 +878,7 @@ class Simulator(SimulatorCompute):
         self.ast_construct()
         self.dump_dict__varname_2_width()
         
+        self.load_logic_value(100000)
         # simulation
         self.simulate()
 
