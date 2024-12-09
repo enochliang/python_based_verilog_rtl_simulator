@@ -1,4 +1,5 @@
-from ast_checker import *
+from ast_checker import AstChecker
+from ast_analyzer import AstAnalyzer
 from ast_nodeclassify import *
 
 import pprint
@@ -6,21 +7,22 @@ from copy import deepcopy
 import json
 
 
-class AstDump(AstAnalyzer):
+class AstDump:
     def __init__(self,ast):
-        AstAnalyzer.__init__(self,ast)
+        self.ast = ast
 
     def output(self,ast):
         with open("output.xml","w") as fp:
             fp.write(etree.tostring(ast.find("."),pretty_print=True).decode())
 
-class AstRemoveNode(AstDump):
+class AstNodeRemover:
     def __init__(self,ast):
-        AstDump.__init__(self,ast)
+        self.ast = ast
+        self.analyzer = AstAnalyzer(self.ast)
 
     def remove_integer(self):
         for var in self.ast.findall(".//module/var"):
-            basicdtype_name = self.get_basic_dtypename__node(var)
+            basicdtype_name = self.analyzer.get_basic_dtypename__node(var)
             if basicdtype_name == "integer":
                 self.remove_ast_node(var)
 
@@ -56,9 +58,11 @@ class AstRemoveNode(AstDump):
 
 
 
-class AstMergeNode(AstRemoveNode):
+class AstNodeMerger:
     def __init__(self,ast):
-        AstRemoveNode.__init__(self,ast)
+        self.ast = ast
+        self.remover = AstNodeRemover(self.ast)
+        self.analyzer = AstAnalyzer(self.ast)
 
     def merge_multi_name_var(self):
         # Merge the <varref> that have different names but refer to same signal
@@ -99,9 +103,9 @@ class AstMergeNode(AstRemoveNode):
                     for varref in self.ast.findall(f".//varref[@name='{sig}']"):
                         varref.attrib["name"] = main_sig
                     varscope = self.ast.find(f".//topscope//varscope[@name='{sig}']")
-                    self.remove_ast_node(varscope)
+                    self.remover.remove_ast_node(varscope)
                     var = self.ast.find(f".//var[@name='{sig}']")
-                    self.remove_ast_node(var)
+                    self.remover.remove_ast_node(var)
         print("-"*80)
 
     def _show_merge_info(self,main_sig, merge_sig):
@@ -121,17 +125,18 @@ class AstMergeNode(AstRemoveNode):
             for varref in self.ast.findall(f".//varref[@name='{lv_name}']"):
                 varref.getparent().replace(varref,rv_node)
             for var in self.ast.findall(f".//var[@name='{lv_name}']"):
-                self.remove_ast_node(var)
+                self.remover.remove_ast_node(var)
             for varscope in self.ast.findall(f".//topscope//varscope[@name='{lv_name}']"):
-                self.remove_ast_node(varscope)
+                self.remover.remove_ast_node(varscope)
 
 
-class AstMarkInfo(AstMergeNode):
+class AstInfoMarker:
     def __init__(self,ast):
-        AstMergeNode.__init__(self,ast)
+        self.ast = ast
+        self.analyzer = AstAnalyzer(self.ast)
 
     def mark_var_sig_type(self):
-        register_name_set = set(self.find_register_var())
+        register_name_set = set(self.analyzer.get_sig__ff())
         for var in self.ast.findall(".//var"):
             var_name = var.attrib["name"]
             if var_name in register_name_set:
@@ -146,7 +151,7 @@ class AstMarkInfo(AstMergeNode):
     def mark_wireassign_lv_name(self):
         for contassign in self.ast.findall(".//contassign"):
             lv_node = contassign.getchildren()[1]
-            lv_sig_name = AstAnalyzeFunc.get_sig_name(lv_node)
+            lv_sig_name = self.analyzer.get_sig_name(lv_node)
             contassign.attrib["lv_name"] = lv_sig_name
 
     def mark_comb_always_lv_name(self):
@@ -155,7 +160,7 @@ class AstMarkInfo(AstMergeNode):
                 continue
             assign = always.find(".//assign")
             lv_node = assign.getchildren()[1]
-            lv_sig_name = AstAnalyzeFunc.get_sig_name(lv_node)
+            lv_sig_name = self.analyzer.get_sig_name(lv_node)
             always.attrib["lv_name"] = lv_sig_name
 
     def mark_always_type(self):
@@ -166,17 +171,17 @@ class AstMarkInfo(AstMergeNode):
                 always.attrib["type"] = "comb"
 
     def mark_width(self):
-        dtypeid_2_width_dict = AstAnalyzeFunc.get_dict__dtypeid_2_width(self.ast)
+        dtypeid_2_width_dict = self.analyzer.get_dict__dtypeid_2_width()
         for node in self.ast.iter():
             if "dtype_id" in node.attrib:
                 dtype_id = node.attrib["dtype_id"]
                 node.attrib["width"] = str(dtypeid_2_width_dict[dtype_id])
 
-class AstNumbering(AstMarkInfo):
+class AstNumberer:
     def __init__(self,ast):
-        AstMarkInfo.__init__(self,ast)
+        self.ast = ast
 
-    def numbering_subcircuit(self):
+    def numbering_subcircuit(self) -> int: 
         print("[AST Schedule Preprocess] start numbering subcircuits...")
         self.subcircuit_num = 0
         for sub_circuit in self.ast.findall(".//contassign") + self.ast.findall(".//always"):
@@ -184,105 +189,121 @@ class AstNumbering(AstMarkInfo):
             self.subcircuit_num += 1
         print(f"  - finished. total number of subcircuit = {self.subcircuit_num}")
         print("-"*80)
+        return self.subcircuit_num
 
-    def numbering_assignment(self):
-        print("[AST Schedule Preprocess] start numbering assignment...")
-        self.assignment_num = 0
-        for assign in self.ast.findall(".//contassign") + self.ast.findall(".//always//assign") + self.ast.findall(".//always//assigndly"):
-            assign.attrib["assignment_id"] = str(self.assignment_num)
-            self.assignment_num += 1
-        print(f"  - finished. total number of assignment = {self.assignment_num}")
-        print("-"*80)
-
-
-    def numbering_circuit_node(self):
-        print("[AST Schedule Preprocess] start numbering circuit node...")
-        self.circuit_node_num = 0
-        self.numbering_var_node()
-        self.numbering_ctrl_node()
-        self.numbering_op_node()
-        print(f"  - finished. total number of circuit node = {self.circuit_node_num}")
-        print("-"*80)
-
-    def numbering_var_node(self):
-        for var in self.ast.findall(".//module//var"):
-            var.attrib["circuit_node_id"] = str(self.circuit_node_num)
-            var_name = var.attrib["name"]
-            # Also give node id to all of its <varref>
-            for varref in self.ast.findall(f".//varref[@name='{var_name}']"):
-                varref.attrib["circuit_node_id"] = str(self.circuit_node_num)
-            self.circuit_node_num += 1
-
-    def numbering_ctrl_node(self):
-        for if_node in self.ast.findall(".//always//if"):
-            ctrl_node = if_node.getchildren()[0]
-            for node in ctrl_node.iter():
-                if node.tag != "varref":
-                    node.attrib["circuit_node_id"] = str(self.circuit_node_num)
-                    self.circuit_node_num += 1
-
-    def numbering_op_node(self):
-        for assign in self.ast.findall(".//contassign") + self.ast.findall(".//always//assign") + self.ast.findall(".//always//assigndly"):
-            for node in assign.iter():
-                if (not "assign" in node.tag) and node.tag != "varref":
-                    node.attrib["circuit_node_id"] = str(self.circuit_node_num)
-                    self.circuit_node_num += 1
+    #def numbering_assignment(self):
+    #    print("[AST Schedule Preprocess] start numbering assignment...")
+    #    self.assignment_num = 0
+    #    for assign in self.ast.findall(".//contassign") + self.ast.findall(".//always//assign") + self.ast.findall(".//always//assigndly"):
+    #        assign.attrib["assignment_id"] = str(self.assignment_num)
+    #        self.assignment_num += 1
+    #    print(f"  - finished. total number of assignment = {self.assignment_num}")
+    #    print("-"*80)
 
 
-class AstSchedulePreprocess(AstNumbering):
+    #def numbering_circuit_node(self):
+    #    print("[AST Schedule Preprocess] start numbering circuit node...")
+    #    self.circuit_node_num = 0
+    #    self.numbering_var_node()
+    #    self.numbering_ctrl_node()
+    #    self.numbering_op_node()
+    #    print(f"  - finished. total number of circuit node = {self.circuit_node_num}")
+    #    print("-"*80)
+
+    #def numbering_var_node(self):
+    #    for var in self.ast.findall(".//module//var"):
+    #        var.attrib["circuit_node_id"] = str(self.circuit_node_num)
+    #        var_name = var.attrib["name"]
+    #        # Also give node id to all of its <varref>
+    #        for varref in self.ast.findall(f".//varref[@name='{var_name}']"):
+    #            varref.attrib["circuit_node_id"] = str(self.circuit_node_num)
+    #        self.circuit_node_num += 1
+
+    #def numbering_ctrl_node(self):
+    #    for if_node in self.ast.findall(".//always//if"):
+    #        ctrl_node = if_node.getchildren()[0]
+    #        for node in ctrl_node.iter():
+    #            if node.tag != "varref":
+    #                node.attrib["circuit_node_id"] = str(self.circuit_node_num)
+    #                self.circuit_node_num += 1
+
+    #def numbering_op_node(self):
+    #    for assign in self.ast.findall(".//contassign") + self.ast.findall(".//always//assign") + self.ast.findall(".//always//assigndly"):
+    #        for node in assign.iter():
+    #            if (not "assign" in node.tag) and node.tag != "varref":
+    #                node.attrib["circuit_node_id"] = str(self.circuit_node_num)
+    #                self.circuit_node_num += 1
+
+class AstModifier(AstNodeRemover,AstNodeMerger,AstInfoMarker,AstNumberer):
     def __init__(self,ast):
-        AstNumbering.__init__(self,ast)
+        AstModifier.super().__init__(self,ast)
+        self.ast = ast
+
+
+
+
+class AstSchedulePreprocess:
+    def __init__(self,ast):
+        self.ast = ast
+        self.analyzer = AstAnalyzer(self.ast)
+        self.checker = AstChecker(self.ast)
+        self.remover = AstNodeRemover(self.ast)
+        self.merger = AstNodeMerger(self.ast)
+        self.marker = AstInfoMarker(self.ast)
+        self.numberer = AstNumberer(self.ast)
 
     def proc(self):
         self.preprocess()
 
     def preprocess(self):
-        checker = AstChecker(self.ast)
-        checker.check_simple_design()
+        self.checker.check_simple_design()
 
+        self.remover.remove_comment_node()
+        self.remover.remove_integer()
+        self.remover.remove_empty_initial()
+        self.remover.remove_param_var()
 
-        self.remove_comment_node()
-        self.remove_integer()
-        self.remove_empty_initial()
-        self.remove_param_var()
+        self.merger.merge_multi_name_var()
+        self.merger.merge_initial_var_const()
 
-        self.merge_multi_name_var()
-        self.merge_initial_var_const()
+        self.marker.mark_var_sig_type()
+        self.marker.mark_comb_subcircuit_lv_name()
+        self.marker.mark_always_type()
+        self.marker.mark_width()
 
-        self.mark_var_sig_type()
-        self.mark_comb_subcircuit_lv_name()
-        self.mark_always_type()
-        self.mark_width()
+        self.remover.remove_sentree()
 
-        self.remove_sentree()
-
-        self.numbering_subcircuit()
+        self.subcircuit_num = self.numberer.numbering_subcircuit()
 
 
 
 
-    def find_register_var(self):
-        return AstAnalyzeFunc.get_sig__ff(self.ast)
+    #def find_register_var(self):
+    #    return self.analyzer.get_sig__ff()
 
-    def find_input_var(self):
-        return AstAnalyzeFunc.get_sig__input_port(self.ast)
+    #def find_input_var(self):
+    #    return self.analyzer.get_sig__input_port()
 
-    def _find_dst_var_node(self,lv_node):
-        if lv_node.tag == "arraysel" or lv_node.tag == "sel":
-            target_node = lv_node.getchildren()[0]
-            return self._find_dst_var_node(target_node)
-        elif lv_node.tag == "varref":
-            return lv_node
-        else:
-            raise Unconsidered_Case(f"node tag = {lv_node.tag}",0)
+    #def _find_dst_var_node(self,lv_node):
+    #    if lv_node.tag == "arraysel" or lv_node.tag == "sel":
+    #        target_node = lv_node.getchildren()[0]
+    #        return self.analyzer.get_sig_node(target_node)
+    #    elif lv_node.tag == "varref":
+    #        return lv_node
+    #    else:
+    #        raise Unconsidered_Case(f"node tag = {lv_node.tag}",0)
 
 
-class AstScheduleSubcircuit(AstSchedulePreprocess):
+class AstScheduleSubcircuit:
     def __init__(self,ast):
-        AstSchedulePreprocess.__init__(self,ast)
+        self.ast = ast
+        self.preproc = AstSchedulePreprocess(self.ast)
+        self.analyzer = AstAnalyzer(self.ast)
+        self.remover = AstNodeRemover(self.ast)
+        self.preproc.preprocess()
+        self.subcircuit_num = self.preproc.subcircuit_num
 
     def proc(self):
-        self.preprocess()
         self.schedule_subcircuit()
         total_ast_node = 0
         for var in self.ast.findall(".//var"):
@@ -328,50 +349,50 @@ class AstScheduleSubcircuit(AstSchedulePreprocess):
             for varref in subcircuit.findall(".//varref"):
                 var_name = varref.attrib["name"]
                 if var_name in ready_sig_name_set:
-                    self.remove_ast_node(varref)
+                    self.remover.remove_ast_node(varref)
     
 
     def _remove_comb_dst_var_node(self):
         for assign in self.ast_schedule.findall(".//contassign") + self.ast_schedule.findall(".//always//assign"):
             lv_node = assign.getchildren()[1]
-            dst_var_node = self._find_dst_var_node(lv_node)
-            self.remove_ast_node(dst_var_node)
+            dst_var_node = self.analyzer.get_sig_node(lv_node)
+            self.remover.remove_ast_node(dst_var_node)
 
     def _remove_ctrl_input_port(self):
-        input_name_set = set(self.find_input_var())
+        input_name_set = set(self.analyzer.get_sig__input_port())
         for input_name in input_name_set:
             for varref in self.ast_schedule.findall(f".//always//varref[@name='{input_name}']"):
                 if not "assign" in self.ast_schedule.getpath(varref):
-                    self.remove_ast_node(varref)
+                    self.remover.remove_ast_node(varref)
 
     def _remove_src_input_port(self):
-        input_name_set = set(self.find_input_var())
+        input_name_set = set(self.analyzer.get_sig__input_port())
         for assign in self.ast_schedule.findall(".//contassign") + self.ast_schedule.findall(".//always//assign"):
             for varref in assign.findall(".//varref"):
                 var_name = varref.attrib["name"]
                 if var_name in input_name_set:
-                    self.remove_ast_node(varref)
+                    self.remover.remove_ast_node(varref)
 
     def _remove_ctrl_register(self):
-        register_name_set = set(self.find_register_var())
+        register_name_set = set(self.analyzer.get_sig__ff())
         for register_name in register_name_set:
             for varref in self.ast_schedule.findall(f".//always//varref[@name='{register_name}']"):
                 if not "assign" in self.ast_schedule.getpath(varref):
-                    self.remove_ast_node(varref)
+                    self.remover.remove_ast_node(varref)
 
     def _remove_src_register(self):
-        register_name_set = set(self.find_register_var())
+        register_name_set = set(self.analyzer.get_sig__ff())
         for assign in self.ast_schedule.findall(".//contassign") + self.ast_schedule.findall(".//always//assign"):
             for varref in assign.findall(".//varref"):
                 var_name = varref.attrib["name"]
                 if var_name in register_name_set:
-                    self.remove_ast_node(varref)
+                    self.remover.remove_ast_node(varref)
 
     def _remove_comb_lv_on_the_right(self):
         for always in self.ast_schedule.findall(".//always[@type='comb']"):
             lv_name = always.attrib["lv_name"]
             for varref in always.findall(f".//varref[@name='{lv_name}']"):
-                self.remove_ast_node(varref)
+                self.remover.remove_ast_node(varref)
 
     def _find_ready_subcircuit(self):
         new_ready_subcircuit_list = []

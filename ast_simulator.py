@@ -1,5 +1,8 @@
 from ast_define import *
 from ast_schedule import *
+from utils import *
+
+import argparse
 import pickle
 import json
 
@@ -20,19 +23,12 @@ class SimulationError(Exception):
     def __str__(self):
         return f"{self.args[0]} (Error Code: {self.error_code})"
 
-class Ast2SimulatorBase(AstAnalyzer):
-    def __init__(self,ast):
-        AstAnalyzer.__init__(self,ast)
-        ast_scheduler = AstSchedule(ast)
-        ast_scheduler.proc()
-        self.ast = ast_scheduler.ast
-        self.subcircuit_num = ast_scheduler.subcircuit_num
-        self.ordered_subcircuit_id_head = ast_scheduler.ordered_subcircuit_id_head
-        self.ordered_subcircuit_id_tail = ast_scheduler.ordered_subcircuit_id_tail
 
-class AstArrayFlatten(Ast2SimulatorBase):
+
+class AstArrayFlatten:
     def __init__(self,ast):
-        Ast2SimulatorBase.__init__(self,ast)
+        self.ast = ast
+        self.analyzer = AstAnalyzer(self.ast)
 
     def output(self,ast):
         with open("output.xml","w") as fp:
@@ -77,14 +73,14 @@ class AstArrayFlatten(Ast2SimulatorBase):
         sub_dtype_id = dtype.attrib["sub_dtype_id"]
         const1 = dtype.find("./range/const[1]").attrib["name"]
         const2 = dtype.find("./range/const[2]").attrib["name"]
-        const1 = AstAnalyzeFunc.vnum2int(const1)
-        const2 = AstAnalyzeFunc.vnum2int(const2)
+        const1 = vnum2int(const1)
+        const2 = vnum2int(const2)
         if const1 > const2:
             for idx in range(const1,const2-1,-1):
                 new_child = etree.Element("var")
                 new_child.attrib["name"] = f"{name}[{idx}]"
                 new_child.attrib["dtype_id"] = sub_dtype_id
-                new_child.attrib["width"] = str(self.get_width__dtype_id(self.ast,sub_dtype_id))
+                new_child.attrib["width"] = str(self.analyzer.get_width__dtype_id(sub_dtype_id))
                 node.append(new_child)
                 self.var_flatten(new_child)
         else:
@@ -92,16 +88,34 @@ class AstArrayFlatten(Ast2SimulatorBase):
                 new_child = etree.Element("var")
                 new_child.attrib["name"] = f"{name}[{idx}]"
                 new_child.attrib["dtype_id"] = sub_dtype_id
-                new_child.attrib["width"] = str(self.get_width__dtype_id(self.ast,sub_dtype_id))
+                new_child.attrib["width"] = str(self.analyzer.get_width__dtype_id(sub_dtype_id))
                 node.append(new_child)
                 self.var_flatten(new_child)
 
-class AstConstructAddVar(AstArrayFlatten):
+class ScheduledAst:
     def __init__(self,ast):
-        AstArrayFlatten.__init__(self,ast)
-        self.module_var_flatten()
-        self.output(self.ast)
+        self.ast = ast
+        self.ast_scheduler = AstSchedule(self.ast)
+        self.ast_scheduler.proc()
+        self.subcircuit_num = self.ast_scheduler.subcircuit_num
+        self.ordered_subcircuit_id_head = self.ast_scheduler.ordered_subcircuit_id_head
+        self.ordered_subcircuit_id_tail = self.ast_scheduler.ordered_subcircuit_id_tail
+
+        self.flattener = AstArrayFlatten(self.ast)
+        self.flattener.module_var_flatten()
+
+
+class AstConstructBase:
+    def __init__(self,ast):
+        self.scheduled_ast = ScheduledAst(ast)
+        self.ast = self.scheduled_ast.ast
+        self.analyzer = AstAnalyzer(self.ast)
         self.my_ast = Verilog_AST()
+
+
+class AstConstructAddVar(AstConstructBase):
+    def __init__(self,ast):
+        AstConstructBase.__init__(self,ast)
 
     def append_var_node(self):
         print("start adding <var> nodes into ast... ")
@@ -161,7 +175,7 @@ class AstConstructAddTree(AstConstructAddVar):
         new_node.tag = node.tag
         if node.tag == "const":
             value = node.attrib["name"]
-            value = AstAnalyzeFunc.vnum2bin(value)
+            value = self.analyzer.vnum2bin(value)
             new_node.value = value
         return new_node
 
@@ -203,7 +217,7 @@ class AstConstructAddTree(AstConstructAddVar):
         return new_node
 
     def append_ast_node(self):
-        for subcircuit_id in range(self.subcircuit_num):
+        for subcircuit_id in range(self.scheduled_ast.subcircuit_num):
             entry_node = self.ast.find(f".//*[@subcircuit_id='{str(subcircuit_id)}']")
             my_entry_node = self.add_ast_child(entry_node)
             self.my_ast.root.append(my_entry_node)
@@ -247,7 +261,7 @@ class AstConstruct(AstConstructAddTree):
 
     def count_xml_subcircuit_node(self):
         ast_node_num = 0
-        for subcircuit_id in range(self.subcircuit_num):
+        for subcircuit_id in range(self.scheduled_ast.subcircuit_num):
             subcircuit = self.ast.find(f".//*[@subcircuit_id='{str(subcircuit_id)}']")
             for node in subcircuit.iter():
                 ast_node_num += 1
@@ -278,6 +292,7 @@ class AstConstruct(AstConstructAddTree):
 
     def process(self):
         self.ast_construct()
+
 
 
 class AstDumpSigList(AstConstruct):
