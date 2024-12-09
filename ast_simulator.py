@@ -178,10 +178,7 @@ class AstConstructAddTree(AstConstructAddVar):
     def _add_ast_assign(self,node):
         return Verilog_AST_Assign_Node()
 
-
-
     def add_ast_child(self,node):
-
         if node.tag == "varref":
             new_node = self._add_ast_varref(node)
         elif "assign" in node.tag:
@@ -217,8 +214,6 @@ class AstConstruct(AstConstructAddTree):
         AstConstructAddTree.__init__(self,ast)
 
     def ast_construct(self):
-        self.ast_node_list = []
-
         self.get_dict__var_width()
         self.append_var_node()
         self.append_ast_node()
@@ -281,6 +276,10 @@ class AstConstruct(AstConstructAddTree):
             node_list = node_list + self.iter_my_node(child)
         return node_list
 
+    def process(self):
+        self.ast_construct()
+
+
 class AstDumpSigList(AstConstruct):
     def __init__(self,ast):
         AstConstruct.__init__(self,ast)
@@ -307,53 +306,76 @@ class AstDumpSigList(AstConstruct):
         f.write(json.dumps(varname_2_width, indent=4))
         f.close()
 
+    def process(self):
+        self.ast_construct()
+        self.dump_dict__varname_2_width()
+
+
 class SimulatorLoadLogic(AstDumpSigList,AstNodeClassify):
     def __init__(self,ast):
         AstDumpSigList.__init__(self,ast)
         AstNodeClassify.__init__(self)
        
-
+        # TODO
         self.logic_value_file_dir = "../picorv32/pattern/"
         self.logic_value_file_head = "FaultFree_Signal_Value_C"
         self.logic_value_file_tail = ".txt"
-        self.load_ordered_varname()
 
-    def load_ordered_varname(self):
-        self.varname_list = []
+    def load_ordered_varname(self) -> list:
+        varname_list = []
         f = open("./sig_list/graph_sig_dict.json","r")
         for varname in json.load(f).keys():
-            self.varname_list.append(varname)
+            varname_list.append(varname)
         f.close()
+        return varname_list
 
-    def load_logic_value_file(self,cycle,width:int=7):
+    def load_logic_value_file(self,cycle,width:int=7) -> list:
+        # Fetch logic value dump file at the specific clock cycle
         target_filename = self.logic_value_file_dir + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
         f = open(target_filename,"r")
         logic_value_list = f.readlines()
         logic_value_list = [value.strip() for value in logic_value_list]
         f.close()
-        self.logic_value_list = []
+        new_logic_value_list = []
 
         for idx in range(len(self.varname_list)):
-            self.logic_value_list.append( (self.varname_list[idx], logic_value_list[idx]) )
-
+            new_logic_value_list.append( (self.varname_list[idx], logic_value_list[idx]) )
+        return new_logic_value_list
 
     def load_logic_value(self,cycle,width:int=7):
-        self.load_logic_value_file(cycle,width)
-        for varname, value in self.logic_value_list:
-            var_id = self.my_ast.var_node(varname)
-            self.ast_node_list[var_id].value = value
+        logic_value_list = self.load_logic_value_file(cycle,width)
+        for varname, value in logic_value_list:
+            var = self.my_ast.var_node(varname)
+            var.value = value
 
+    
+
+    def process(self):
+        self.ast_construct()
+        self.dump_dict__varname_2_width()
+
+        self.varname_list = self.load_ordered_varname()
+
+        self.load_logic_value(100000)
 
 class SimulatorExecute(SimulatorLoadLogic):
     def __init__(self,ast):
         SimulatorLoadLogic.__init__(self,ast)
 
-
-    def get_node(self,node_id):
-        return self.ast_node_list[node_id]
+    def execute(self,node):
+        if "assign" in node.tag:
+            self.execute_assign(node)
+        elif node.tag == "if":
+            self.execute_if(node)
+        elif node.tag == "case":
+            self.execute_case(node)
+        elif node.tag == "begin" or node.tag == "always":
+            self.execute_block(node)
+        else:
+            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.")
 
     def execute_assign(self,node):
-        right_node = self.get_node(node.children[0])
+        right_node = node.rv_node
         width = right_node.width
         value = self.compute(right_node)
 
@@ -371,37 +393,20 @@ class SimulatorExecute(SimulatorLoadLogic):
                 self.execute(false_node)
 
     def execute_case(self,node):
-        ctrl_node = self.get_node(node.ctrl_sig_id)
+        ctrl_node = self.get_node(node.ctrl_node)
         value = self.compute(ctrl_node)
-        for child_id in node.children[1:]:
-            child_node = self.get_node(child_id)
-            if self.execute_caseitem(child_node,value):
+        for child in node.caseitems:
+            if self.execute_caseitem(child,value):
                 break
 
     def execute_block(self,node):
-        for child_id in node.children:
-            child_node = self.get_node(child_id)
-            self.execute(child_node)
-
-    def execute(self,node):
-        print(node.tag)
-        if "assign" in node.tag:
-            self.execute_assign(node)
-        else:
-            if node.tag == "if":
-                self.execute_if(node)
-            elif node.tag == "case":
-                self.execute_case(node)
-            elif node.tag == "begin" or node.tag == "always":
-                self.execute_block(node)
-            else:
-                print(f"Exception!!! tag = {node.tag}")
+        for child in node.children:
+            self.execute(child)
 
     def trigger_condition(self,node,ctrl_value:str):
         flag = False
-        for condition_id in node.condition_ids:
-            condition_node = self.get_node(condition_id)
-            if self.compute(condition_node) == ctrl_value:
+        for cond in node.conditions:
+            if self.compute(cond) == ctrl_value:
                 flag = True
                 break
         return (flag or (node.condition_ids == []))
@@ -409,9 +414,8 @@ class SimulatorExecute(SimulatorLoadLogic):
     def execute_caseitem(self,node,ctrl_value:str):
         flag = self.trigger_condition(node,ctrl_value)
         if flag:
-            for child_id in node.other_children:
-                child_node = self.get_node(child_id)
-                self.execute(child_node)
+            for child in node.other_children:
+                self.execute(child)
         return flag
 
     def compute(self,node):
@@ -732,9 +736,10 @@ class Simulator(SimulatorCompute):
 
     def process(self):
         self.ast_construct()
-        #self.dump_dict__varname_2_width()
+        self.dump_dict__varname_2_width()
         
-        #self.load_logic_value(100000)
+        self.varname_list = self.load_ordered_varname()
+        self.load_logic_value(100000)
         # simulation
         #self.simulate()
 
