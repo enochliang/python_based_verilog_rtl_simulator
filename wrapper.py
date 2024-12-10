@@ -1,6 +1,15 @@
 from lxml import etree
 import json
 
+class GenSigList:
+    def __init__(self,ast):
+        self.ast = ast
+        self.flattener = 
+
+    def 
+
+
+
 class GenSimFFWrapper:
     def __init__(self,sig_dict):
         self.sig_dict = sig_dict
