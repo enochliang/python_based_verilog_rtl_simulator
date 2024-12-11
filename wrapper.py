@@ -4,32 +4,6 @@ from ast_schedule import AstSchedulePreprocess
 from lxml import etree
 import json
 
-
-class GenSigList:
-    def __init__(self,ast):
-        self.ast = ast
-        self.preprocessor = AstSchedulePreprocess(self.ast)
-        self.flattener = AstArrayFlatten(self.ast)
-
-    def ast_process(self):
-        self.preprocessor.preprocess()
-        self.flattener.module_var_flatten()
-
-    def get_input_port(self):
-        for var in self.ast.findall(".//module//var[@dir='in']"):
-            pass
-
-
-    def get_ff(self):
-        for var in self.ast.findall(".//module//var[@type='register']"):
-            pass
-
-    def get_output_port(self):
-        for var in self.ast.findall(".//module//var[@dir='out']"):
-            pass
-
-
-
 class GenSimFFWrapper:
     def __init__(self,sig_dict):
         self.sig_dict = sig_dict

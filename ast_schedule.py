@@ -8,16 +8,8 @@ from copy import deepcopy
 import json
 
 
-class AstDump:
-    def __init__(self,ast):
-        self.ast = ast
-
-    def output(self,ast):
-        with open("output.xml","w") as fp:
-            fp.write(etree.tostring(ast.find("."),pretty_print=True).decode())
-
-
 class AstSchedulePreprocess:
+    """ In this class, it only modifies "self.ast". """
     def __init__(self,ast):
         self.ast = ast
         self.analyzer = AstAnalyzer(self.ast)
@@ -27,10 +19,12 @@ class AstSchedulePreprocess:
         self.marker = AstInfoMarker(self.ast)
         self.numberer = AstNumberer(self.ast)
 
-    def proc(self):
-        self.preprocessoress()
-
     def preprocess(self):
+        """ 
+        Preprocess "self.ast" before scheduling.
+            Input:  self.ast
+            Output: self.ast
+        """
         self.checker.check_simple_design()
 
         self.remover.remove_comment_node()
@@ -54,6 +48,10 @@ class AstSchedulePreprocess:
 
 class AstScheduleSubcircuit:
     def __init__(self,ast):
+        """
+        In this class, it makes a duplicate ast -> self.ast_schedule. 
+        It will only modifies self.ast_schedule during scheduling.
+        """
         self.ast = ast
         self.preprocessor = AstSchedulePreprocess(self.ast)
         self.analyzer = AstAnalyzer(self.ast)
@@ -64,6 +62,12 @@ class AstScheduleSubcircuit:
 
 
     def schedule_subcircuit(self):
+        """
+        Schedule <always> & <contassign>.
+            Input:  self.ast_schedule
+            Output: self.ordered_subcircuit_id_tail
+                    self.ordered_subcircuit_id_head
+        """
         self.ast_schedule = deepcopy(self.ast)
         self.subcircuit_id_list = [subcircuit_id for subcircuit_id in range(self.subcircuit_num)]
         self.ordered_subcircuit_id_list = []
@@ -171,7 +175,7 @@ class AstSchedule(AstScheduleSubcircuit):
     def __init__(self,ast):
         AstScheduleSubcircuit.__init__(self,ast)
 
-    def proc(self):
+    def schedule(self):
         self.schedule_subcircuit()
         total_ast_node = 0
         for var in self.ast.findall(".//var"):

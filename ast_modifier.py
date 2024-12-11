@@ -1,4 +1,5 @@
 from ast_analyzer import AstAnalyzer
+from ast_dump import *
 
 from lxml import etree
 
@@ -179,14 +180,16 @@ class AstArrayFlatten:
     def __init__(self,ast):
         self.ast = ast
         self.analyzer = AstAnalyzer(self.ast)
-
-    def output(self,ast):
-        with open("output.xml","w") as fp:
-            fp.write(etree.tostring(ast.find("."),pretty_print=True).decode())
+        self.ast_dumper = AstDump(self.ast)
 
     def module_var_flatten(self):
+        """
+        This function flatten all composite signals (e.g. array, struct...) into packed registers.
+        """
         for var in self.ast.findall(".//module/var"):
-            self.var_flatten(var)
+            self._var_flatten(var)
+        self.ast_dumper.dump()
+
 
     def get_dtype_node(self,node):
         dtype_id = node.attrib["dtype_id"]
@@ -200,7 +203,9 @@ class AstArrayFlatten:
             dtype = self.ast.find(f".//typetable//*[@id='{sub_dtype_id}']")
         return dtype
 
-    def var_flatten(self,node):
+    def _var_flatten(self,node):
+        if node.tag == "none":
+            return
         dtype = self.get_dtype_node(node)
         if dtype.tag == "basicdtype":
             pass
@@ -217,27 +222,39 @@ class AstArrayFlatten:
 
 
     def unpackarray_flatten(self,node):
-        name = node.attrib["name"]
         node.tag = "unpackarray"
+
+        name = node.attrib["name"]
+        sig_type = node.attrib["sig_type"]
         dtype = self.get_dtype_node(node)
         sub_dtype_id = dtype.attrib["sub_dtype_id"]
+
         const1 = dtype.find("./range/const[1]").attrib["name"]
         const2 = dtype.find("./range/const[2]").attrib["name"]
         const1 = self.analyzer.vnum2int(const1)
         const2 = self.analyzer.vnum2int(const2)
+
         if const1 > const2:
-            for idx in range(const1,const2-1,-1):
-                new_child = etree.Element("var")
-                new_child.attrib["name"] = f"{name}[{idx}]"
-                new_child.attrib["dtype_id"] = sub_dtype_id
-                new_child.attrib["width"] = str(self.analyzer.get_width__dtype_id(sub_dtype_id))
+            for idx in range(const1+1):
+                if const2 > idx:
+                    new_child = etree.Element("none")
+                else:
+                    new_child = etree.Element("var")
+                    new_child.attrib["name"] = f"{name}[{idx}]"
+                    new_child.attrib["dtype_id"] = sub_dtype_id
+                    new_child.attrib["width"] = str(self.analyzer.get_width__dtype_id(sub_dtype_id))
+                    new_child.attrib["type"] = sig_type
                 node.append(new_child)
-                self.var_flatten(new_child)
+                self._var_flatten(new_child)
         else:
-            for idx in range(const1,const2+1,1):
-                new_child = etree.Element("var")
-                new_child.attrib["name"] = f"{name}[{idx}]"
-                new_child.attrib["dtype_id"] = sub_dtype_id
-                new_child.attrib["width"] = str(self.analyzer.get_width__dtype_id(sub_dtype_id))
+            for idx in range(const2+1):
+                if const1 > idx:
+                    new_child = etree.Element("none")
+                else:
+                    new_child = etree.Element("var")
+                    new_child.attrib["name"] = f"{name}[{idx}]"
+                    new_child.attrib["dtype_id"] = sub_dtype_id
+                    new_child.attrib["width"] = str(self.analyzer.get_width__dtype_id(sub_dtype_id))
+                    new_child.attrib["type"] = sig_type
                 node.append(new_child)
-                self.var_flatten(new_child)
+                self._var_flatten(new_child)

@@ -1,269 +1,27 @@
 from ast_define import *
-from ast_schedule import *
+from ast_construct import AstDuplicate
+from ast_nodeclassify import *
+from ast_dump import *
+from exceptions import SimulationError
 from utils import *
 
 import argparse
 import pickle
 import json
 
-
-class Verilog_AST_Construction_Exception(Exception):
-    def __init__(self, message, error_code):
-        super().__init__(message)
-        self.error_code = error_code
-
-    def __str__(self):
-        return f"{self.args[0]} (Error Code: {self.error_code})"
-
-class SimulationError(Exception):
-    def __init__(self, message, error_code):
-        super().__init__(message)
-        self.error_code = error_code
-
-    def __str__(self):
-        return f"{self.args[0]} (Error Code: {self.error_code})"
-
-
-
-
-class ScheduledAst:
+class SimulatorLoadLogic(AstNodeClassify):
     def __init__(self,ast):
-        self.ast = ast
-        self.ast_scheduler = AstSchedule(self.ast)
-        self.ast_scheduler.proc()
-        self.subcircuit_num = self.ast_scheduler.subcircuit_num
-        self.ordered_subcircuit_id_head = self.ast_scheduler.ordered_subcircuit_id_head
-        self.ordered_subcircuit_id_tail = self.ast_scheduler.ordered_subcircuit_id_tail
-
-        self.flattener = AstArrayFlatten(self.ast)
-        self.flattener.module_var_flatten()
-
-
-class AstConstructBase:
-    def __init__(self,ast):
-        self.scheduled_ast = ScheduledAst(ast)
-        self.ast = self.scheduled_ast.ast
-        self.analyzer = AstAnalyzer(self.ast)
-        self.my_ast = Verilog_AST()
-
-
-class AstConstructAddVar(AstConstructBase):
-    def __init__(self,ast):
-        AstConstructBase.__init__(self,ast)
-
-    def append_var_node(self):
-        print("start adding <var> nodes into ast... ")
-        for var in self.ast.find(".//module").getchildren():
-            if var.tag == "always":
-                continue
-            if var.tag == "contassign":
-                continue
-            if var.tag == "initial":
-                continue
-            if var.tag == "assignalias":
-                continue
-            if "param" in var.attrib:
-                continue
-            if "localparam" in var.attrib:
-                continue
-            if var.tag == "topscope":
-                continue
-            name = var.attrib["name"]
-            varrootnode = self._append_var_node(var)
-            self.my_ast._map__name_2_varroot[name] = varrootnode
-            self.my_ast.root.append(varrootnode)
-
-
-    def _append_var_node(self,node):
-        width = int(node.attrib["width"])
-        name = node.attrib["name"]
-
-        new_var_node = Verilog_AST_Var_Node(width)
-        new_var_node.tag = node.tag
-        new_var_node.name = name
-
-        for child in node.getchildren():
-            new_var_node.append(self._append_var_node(child))
-
-        if new_var_node.tag == "var":
-            self.my_ast._map__name_2_varnode[name] = new_var_node
-
-        return new_var_node
-
-class AstConstructAddTree(AstConstructAddVar):
-    def __init__(self,ast):
-        AstConstructAddVar.__init__(self,ast)
-
-    def _add_ast_varref(self,node):
-        name = node.attrib["name"]
-        width = int(node.attrib["width"])
-        ref_node = self.my_ast.varroot_node(name)
-        new_node = Verilog_AST_Varref_Node(width)
-        new_node.name = name
-        new_node.ref_node = ref_node
-        return new_node
-
-    def _add_ast_circuit_node(self,node):
-        width = int(node.attrib["width"])
-        new_node = Verilog_AST_Circuit_Node(width)
-        new_node.tag = node.tag
-        if node.tag == "const":
-            value = node.attrib["name"]
-            value = self.analyzer.vnum2bin(value)
-            new_node.value = value
-        return new_node
-
-    def _add_ast_case(self):
-        return Verilog_AST_CASE_Node()
-
-    def _add_ast_if(self):
-        return Verilog_AST_IF_Node()
-
-    def _add_ast_caseitem(self):
-        new_node = Verilog_AST_CASEITEM_Node()
-        return new_node
-
-    def _add_ast_assign(self,node):
-        return Verilog_AST_Assign_Node()
-
-    def add_ast_child(self,node):
-        if node.tag == "varref":
-            new_node = self._add_ast_varref(node)
-        elif "assign" in node.tag:
-            new_node = self._add_ast_assign(node)
-        elif "dtype_id" in node.attrib:
-            new_node = self._add_ast_circuit_node(node)
-        else:
-            if node.tag == "case":
-                new_node = self._add_ast_case()
-            elif node.tag == "if":
-                new_node = self._add_ast_if()
-            elif node.tag == "caseitem":
-                new_node = self._add_ast_caseitem()
-            else:
-                new_node = Verilog_AST_Node()
-                new_node.tag = node.tag
-
-        children = node.getchildren()
-        for child in children:
-            new_node.append(self.add_ast_child(child))
-
-        return new_node
-
-    def append_ast_node(self):
-        for subcircuit_id in range(self.scheduled_ast.subcircuit_num):
-            entry_node = self.ast.find(f".//*[@subcircuit_id='{str(subcircuit_id)}']")
-            my_entry_node = self.add_ast_child(entry_node)
-            self.my_ast.root.append(my_entry_node)
-            self.my_ast._map__treeid_2_node[subcircuit_id] = my_entry_node
-
-class AstConstruct(AstConstructAddTree):
-    def __init__(self,ast):
-        AstConstructAddTree.__init__(self,ast)
-
-    def ast_construct(self):
-        self.get_dict__var_width()
-        self.append_var_node()
-        self.append_ast_node()
-        self.count_xml_ast_node()
-        self.count_my_ast_node()
-
-    def count_xml_ast_node(self):
-        self.count_xml_var_node()
-        self.count_xml_subcircuit_node()
-
-    def count_xml_var_node(self):
-        var_num = 0
-        for var in self.ast.find(".//module").getchildren():
-            if var.tag == "always":
-                continue
-            if var.tag == "contassign":
-                continue
-            if var.tag == "initial":
-                continue
-            if var.tag == "assignalias":
-                continue
-            if "param" in var.attrib:
-                continue
-            if "localparam" in var.attrib:
-                continue
-            if var.tag == "topscope":
-                continue
-            for node in var.iter():
-                var_num += 1
-        print(f"Total Number of <var> = {var_num}")
-
-    def count_xml_subcircuit_node(self):
-        ast_node_num = 0
-        for subcircuit_id in range(self.scheduled_ast.subcircuit_num):
-            subcircuit = self.ast.find(f".//*[@subcircuit_id='{str(subcircuit_id)}']")
-            for node in subcircuit.iter():
-                ast_node_num += 1
-        print(f"Total Number of AST Nodes = {ast_node_num}")
-
-    def count_my_ast_node(self):
-        self.count_my_var_node()
-        self.count_my_subcircuit_node()
-
-    def count_my_var_node(self):
-        ast_var_num = 0
-        for key, node in self.my_ast._map__name_2_varroot.items():
-            ast_var_num += len(self.iter_my_node(node))
-        print(f"Total Number of <var> in my ast = {ast_var_num}")
-
-    def count_my_subcircuit_node(self):
-        ast_node_num = 0
-        for key, node in self.my_ast._map__treeid_2_node.items():
-            ast_node_num += len(self.iter_my_node(node))
-        print(f"Total Number of subcircuit nodes in my ast = {ast_node_num}")
-
-    def iter_my_node(self,node):
-        node_list = []
-        node_list.append(node)
-        for child in node.children:
-            node_list = node_list + self.iter_my_node(child)
-        return node_list
-
-    def process(self):
-        self.ast_construct()
-
-
-
-class AstDumpSigList(AstConstruct):
-    def __init__(self,ast):
-        AstConstruct.__init__(self,ast)
-        self._dict__varname_2_width = {}
-
-    def get_dict__var_width(self):
-        for var in self.ast.findall(".//module//var"):
-            width = int(var.attrib["width"])
-            name = var.attrib["name"]
-            self._dict__varname_2_width[name] = width
-
-    def dump_dict__varname_2_width(self):
-        print("Dumped Varname Dict.")
-        varname_2_width = {}
-        clk_name = "clk"
-        optimize_sig = "__Vdfg"
-        for varname in self._dict__varname_2_width:
-            if optimize_sig in varname:
-                continue
-            if clk_name == varname:
-                continue
-            varname_2_width[varname] = self._dict__varname_2_width[varname]
-        f = open("./sig_list/graph_sig_dict.json","w")
-        f.write(json.dumps(varname_2_width, indent=4))
-        f.close()
-
-    def process(self):
-        self.ast_construct()
-        self.dump_dict__varname_2_width()
-
-
-class SimulatorLoadLogic(AstDumpSigList,AstNodeClassify):
-    def __init__(self,ast):
-        AstDumpSigList.__init__(self,ast)
         AstNodeClassify.__init__(self)
+
+        self.ast = ast
+
+        # duplicate ast -> get self.my_ast
+        self.ast_duplicator = AstDuplicate(self.ast)
+        self.ast_duplicator.duplicate()
+        self.my_ast = self.ast_duplicator.my_ast
+
+        # dump simulator sig list
+        self.sig_dumper = AstDumpSimulatorSigList(self.ast)
        
         # TODO
         self.logic_value_file_dir = "../picorv32/pattern/"
@@ -272,7 +30,7 @@ class SimulatorLoadLogic(AstDumpSigList,AstNodeClassify):
 
     def load_ordered_varname(self) -> list:
         varname_list = []
-        f = open("./sig_list/graph_sig_dict.json","r")
+        f = open("./sig_list/simulator_sig_dict.json","r")
         for varname in json.load(f).keys():
             varname_list.append(varname)
         f.close()
@@ -297,15 +55,6 @@ class SimulatorLoadLogic(AstDumpSigList,AstNodeClassify):
             var = self.my_ast.var_node(varname)
             var.value = value
 
-    
-
-    def process(self):
-        self.ast_construct()
-        self.dump_dict__varname_2_width()
-
-        self.varname_list = self.load_ordered_varname()
-
-        self.load_logic_value(100000)
 
 class SimulatorExecute(SimulatorLoadLogic):
     def __init__(self,ast):
@@ -667,12 +416,12 @@ class SimulatorCompute(SimulatorExecute):
 class Simulator(SimulatorCompute):
     def __init__(self,ast):
         SimulatorCompute.__init__(self,ast)
+        self.dumper = AstDumpSimulatorSigList(self.ast)
 
-    def simulate(self):
+    def simulate_1_cyc(self):
         t_set = set()
         for node in self.ast_node_list:
             t_set.add(type(node))
-        print(t_set)
         for subcircuit_id in self.ordered_subcircuit_id_head:
             entry_id = self.my_ast._map__treeid_2_node[subcircuit_id]
             entry_node = self.get_node(entry_id)
@@ -684,9 +433,7 @@ class Simulator(SimulatorCompute):
 
 
     def process(self):
-        self.ast_construct()
-        self.dump_dict__varname_2_width()
-        
+        self.dumper.dump_sig_dict()
         self.varname_list = self.load_ordered_varname()
         self.load_logic_value(100000)
         # simulation
