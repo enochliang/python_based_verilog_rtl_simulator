@@ -17,14 +17,6 @@ class AstDump:
             fp.write(etree.tostring(ast.find("."),pretty_print=True).decode())
 
 
-class AstModifier(AstNodeRemover,AstNodeMerger,AstInfoMarker,AstNumberer):
-    def __init__(self,ast):
-        AstModifier.super().__init__(self,ast)
-        self.ast = ast
-
-
-
-
 class AstSchedulePreprocess:
     def __init__(self,ast):
         self.ast = ast
@@ -36,7 +28,7 @@ class AstSchedulePreprocess:
         self.numberer = AstNumberer(self.ast)
 
     def proc(self):
-        self.preprocess()
+        self.preprocessoress()
 
     def preprocess(self):
         self.checker.check_simple_design()
@@ -60,37 +52,16 @@ class AstSchedulePreprocess:
 
 
 
-
-    #def find_register_var(self):
-    #    return self.analyzer.get_sig__ff()
-
-    #def find_input_var(self):
-    #    return self.analyzer.get_sig__input_port()
-
-    #def _find_dst_var_node(self,lv_node):
-    #    if lv_node.tag == "arraysel" or lv_node.tag == "sel":
-    #        target_node = lv_node.getchildren()[0]
-    #        return self.analyzer.get_sig_node(target_node)
-    #    elif lv_node.tag == "varref":
-    #        return lv_node
-    #    else:
-    #        raise Unconsidered_Case(f"node tag = {lv_node.tag}",0)
-
-
 class AstScheduleSubcircuit:
     def __init__(self,ast):
         self.ast = ast
-        self.preproc = AstSchedulePreprocess(self.ast)
+        self.preprocessor = AstSchedulePreprocess(self.ast)
         self.analyzer = AstAnalyzer(self.ast)
         self.remover = AstNodeRemover(self.ast)
-        self.preproc.preprocess()
-        self.subcircuit_num = self.preproc.subcircuit_num
 
-    def proc(self):
-        self.schedule_subcircuit()
-        total_ast_node = 0
-        for var in self.ast.findall(".//var"):
-            total_ast_node += 1
+        self.preprocessor.preprocess()
+        self.subcircuit_num = self.preprocessor.subcircuit_num
+
 
     def schedule_subcircuit(self):
         self.ast_schedule = deepcopy(self.ast)
@@ -200,6 +171,11 @@ class AstSchedule(AstScheduleSubcircuit):
     def __init__(self,ast):
         AstScheduleSubcircuit.__init__(self,ast)
 
+    def proc(self):
+        self.schedule_subcircuit()
+        total_ast_node = 0
+        for var in self.ast.findall(".//var"):
+            total_ast_node += 1
 
     
 

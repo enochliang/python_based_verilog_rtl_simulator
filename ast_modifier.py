@@ -1,5 +1,7 @@
 from ast_analyzer import AstAnalyzer
 
+from lxml import etree
+
 class AstNodeRemover:
     def __init__(self,ast):
         self.ast = ast
@@ -221,8 +223,8 @@ class AstArrayFlatten:
         sub_dtype_id = dtype.attrib["sub_dtype_id"]
         const1 = dtype.find("./range/const[1]").attrib["name"]
         const2 = dtype.find("./range/const[2]").attrib["name"]
-        const1 = vnum2int(const1)
-        const2 = vnum2int(const2)
+        const1 = self.analyzer.vnum2int(const1)
+        const2 = self.analyzer.vnum2int(const2)
         if const1 > const2:
             for idx in range(const1,const2-1,-1):
                 new_child = etree.Element("var")
