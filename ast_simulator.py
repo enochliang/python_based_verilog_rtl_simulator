@@ -2,14 +2,15 @@ from ast_define import *
 from ast_construct import AstDuplicate
 from ast_nodeclassify import *
 from ast_dump import *
-from exceptions import SimulationError
 from utils import *
+from exceptions import SimulationError
+from rtl_functions import *
 
 import argparse
 import pickle
 import json
 
-class SimulatorLoadLogic(AstNodeClassify):
+class SimulatorExecute(AstNodeClassify):
     def __init__(self,ast):
         AstNodeClassify.__init__(self)
 
@@ -56,352 +57,183 @@ class SimulatorLoadLogic(AstNodeClassify):
             var.value = value
 
 
-class SimulatorExecute(SimulatorLoadLogic):
-    def __init__(self,ast):
-        SimulatorLoadLogic.__init__(self,ast)
+    def execute_comb(self,node):
+        self.execute_rtl(node)
+        #self.execute_df(node)
 
-    def execute(self,node):
+
+    def execute_seq(self,node):
+        self.execute_rtl(node)
+        #self.execute_df(node)
+
+    #------------------------------------------------------
+
+    # RTL simulation functions
+    def execute_rtl(self,node):
         if "assign" in node.tag:
-            self.execute_assign(node)
+            self.execute_rtl_assign(node)
         elif node.tag == "if":
-            self.execute_if(node)
+            self.execute_rtl_if(node)
         elif node.tag == "case":
-            self.execute_case(node)
+            self.execute_rtl_case(node)
         elif node.tag == "begin" or node.tag == "always":
-            self.execute_block(node)
+            self.execute_rtl_block(node)
         else:
-            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.")
+            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
 
-    def execute_assign(self,node):
+    def execute_rtl_assign(self,node):
         right_node = node.rv_node
-        width = right_node.width
-        value = self.compute(right_node)
 
-    def execute_if(self,node):
-        ctrl_node = self.get_node(node.ctrl_sig_id)
-        value = self.compute(ctrl_node)
+        # visit
+        self.compute_rtl(right_node)
+        #self.propagate_df(right_node)
+
+        # get right value result
+        value = right_node.value
+        #fault_list = right_node.fault_list
+
+    def execute_rtl_if(self,node):
+        ctrl_node = node.ctrl_node
+        self.compute_rtl(ctrl_node)
+        value = ctrl_node.value
         if "1" in value:
-            true_node = self.get_node(node.true_id)
-            self.execute(true_node)
+            self.execute_rtl(node.true_node)
         else:
-            if node.false_id == None:
+            if node.false_node == None:
                 pass
             else:
-                false_node = self.get_node(node.false_id)
-                self.execute(false_node)
+                self.execute_rtl(node.false_node)
 
-    def execute_case(self,node):
-        ctrl_node = self.get_node(node.ctrl_node)
-        value = self.compute(ctrl_node)
+    def execute_rtl_case(self,node):
+        ctrl_node = node.ctrl_node
+        self.compute_rtl(ctrl_node)
+        value = node.ctrl_node.value
         for child in node.caseitems:
-            if self.execute_caseitem(child,value):
+            if self.execute_rtl_caseitem(child,value):
                 break
 
-    def execute_block(self,node):
+    def execute_rtl_block(self,node):
         for child in node.children:
-            self.execute(child)
+            self.execute_rtl(child)
 
-    def trigger_condition(self,node,ctrl_value:str):
+    def trigger_rtl_condition(self,node,ctrl_value:str):
         flag = False
         for cond in node.conditions:
-            if self.compute(cond) == ctrl_value:
+            self.compute_rtl(cond)
+            if cond.value == ctrl_value:
                 flag = True
                 break
-        return (flag or (node.condition_ids == []))
+        return (flag or (node.conditions == []))
 
-    def execute_caseitem(self,node,ctrl_value:str):
-        flag = self.trigger_condition(node,ctrl_value)
+    def execute_rtl_caseitem(self,node,ctrl_value:str):
+        flag = self.trigger_rtl_condition(node,ctrl_value)
         if flag:
             for child in node.other_children:
-                self.execute(child)
+                self.execute_rtl(child)
         return flag
 
-    def compute(self,node):
-        pass
+    def compute_rtl(self,node) -> None:
+        width = node.width
+        result = "x"*width
+        for child in node.children:
+            self.compute_rtl(child)
 
+        if node.tag == "varref":
+            pass
+        elif node.tag == "arraysel":
+            pass
+            #array_node = node.children[0]
+            #idx = int(node.children[1].value,2)
+        elif node.tag == "sel":
+            if "x" in node.children[1].value:
+                result = "x" * width
+            else:
+                var_value = node.children[0].value
+                start_bit = int(node.children[1].value,2)
+                bit_width = int(node.children[2].value,2)
+                if start_bit == 0:
+                    result = var_value[-1-bit_width:]
+                else:
+                    result = var_value[-(start_bit+1)-bit_width:-(start_bit+1)]
+        elif node.tag in self.op__2_port:
+            result = val_2_op(node)
+        elif node.tag in self.op__1_port:
+            result = val_1_op(node)
+        else:
+            if node.tag == "cond":
+                c_value = node.children[0].value
+                c_value.replace("z","x")
+                if c_value == "1":
+                    result = node.children[1].value
+                elif c_value == "0":
+                    result = node.children[2].value
+                else:
+                    result = "x"*width
+            elif node.tag == "const":
+                pass
+            else:
+                raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",3)
+        
+        if result is not None:
+            if len(result) == width:
+                node.value = result
+            else:
+                raise SimulationError(f"result and width mismatch: tag = {node.tag}, result = {result}, width = {width}.",4)
 
-class SimulatorCompute(SimulatorExecute):
-    def __init__(self,ast):
-        SimulatorExecute.__init__(self,ast)
+    #------------------------------------------------------
+
+    # Data Write-event fault propagation
+    #
+    def execute_df(self,node):
+        if "assign" in node.tag:
+            self.execute_df_assign(node)
+        elif node.tag == "if":
+            self.execute_df_if(node)
+        elif node.tag == "case":
+            self.execute_df_case(node)
+        elif node.tag == "begin" or node.tag == "always":
+            self.execute_df_block(node)
+        else:
+            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
+    #------------------------------------------------------
+
+    # Control fault propagation
+    #
+    def execute_seq_cf(self,node):
+        if "assign" in node.tag:
+            self.execute_seq_cf_assign(node)
+        elif node.tag == "if":
+            self.execute_seq_cf_if(node)
+        elif node.tag == "case":
+            self.execute_seq_cf_case(node)
+        elif node.tag == "begin" or node.tag == "always":
+            self.execute_seq_cf_block(node)
+        else:
+            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
+    #------------------------------------------------------
+
+    # Control fault propagation
+    #
+    def execute_comb_cf(self,node):
+        if "assign" in node.tag:
+            self.execute_comb_cf_assign(node)
+        elif node.tag == "if":
+            self.execute_comb_cf_if(node)
+        elif node.tag == "case":
+            self.execute_comb_cf_case(node)
+        elif node.tag == "begin" or node.tag == "always":
+            self.execute_comb_cf_block(node)
+        else:
+            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
+    #------------------------------------------------------
 
     def get_value(self,node):
-        if node is str:
+        if type(node) is str:
             return node
         else:
             return node.value
+    
 
-    def compute(self,node):
-        print(node.tag)
-        width = node.width
-        if node.tag == "varref":
-            ref_id = node.ref_id
-            var_node = self.ast_node_list[ref_id]
-            return var_node
-        elif node.tag == "arraysel":
-            sel_node = self.get_node(node.children[1])
-            idx = int(self.get_value(self.compute(sel_node)),2)
-            return self.get_node(node.children[0]).children[idx]
-        elif node.tag == "sel":
-            pass
-        elif node.tag in self.op__2_port:
-            left_node = self.get_node(node.children[0])
-            right_node = self.get_node(node.children[1])
-            r_value = self.get_value(self.compute(right_node))
-            l_value = self.get_value(self.compute(left_node))
-            r_value = r_value.replace("z","x")
-            l_value = l_value.replace("z","x")
-            if "x" in r_value+l_value:
-                result = "x"*width
-            elif "z" in r_value+l_value:
-                result = "z"*width
-            elif node.tag == "and":
-                result = self.ast_and(l_value,r_value,width)
-            elif node.tag == "or":
-                result = self.ast_or(l_value,r_value,width)
-            elif node.tag == "xor":
-                result = self.ast_xor(l_value,r_value,width)
-            elif node.tag == "add":
-                result = self.ast_add(l_value,r_value,width)
-            elif node.tag == "sub":
-                result = self.ast_sub(l_value,r_value,width)
-            elif node.tag == "muls":
-                result = self.ast_muls(l_value,r_value,width)
-            elif node.tag == "shiftl":
-                result = self.ast_shiftl(l_value,r_value,width)
-            elif node.tag == "shiftr":
-                result = self.ast_shiftr(l_value,r_value,width)
-            elif node.tag == "shiftrs":
-                result = self.ast_shiftrs(l_value,r_value,width)
-            elif node.tag == "eq":
-                result = self.ast_eq(l_value,r_value)
-            elif node.tag == "neq":
-                result = self.ast_neq(l_value,r_value)
-            elif node.tag == "gt":
-                result = self.ast_gt(l_value,r_value)
-            elif node.tag == "gte":
-                result = self.ast_gte(l_value,r_value)
-            elif node.tag == "lte":
-                result = self.ast_lte(l_value,r_value)
-            elif node.tag == "lt":
-                result = self.ast_lt(l_value,r_value)
-            elif node.tag == "concat":
-                result = self.ast_concat(l_value,r_value)
-            else:
-                result = ""
-        elif node.tag in self.op__1_port:
-            input_node = self.get_node(node.children[0])
-            i_value = self.compute(input_node)
-            if "x" in i_value:
-                result = "x"*width
-            elif "z" in i_value:
-                result = "z"*width
-            elif node.tag == "not":
-                result = self.ast_not(i_value)
-        else:
-            if node.tag == "arraysel":
-                result = self.ast_arraysel(l_value,r_value,width)
-            elif node.tag == "sel":
-                result = self.ast_sel()
-            result = ""
-        
-        return result
-
-    # computation part
-    def ast_and(self,lv,rv,width:int):
-        result = ""
-        for idx in range(width):
-            result = result + self._and(rv[idx],lv[idx])
-        self.check_width(result,width)
-        return result
-
-    def ast_or(self,lv,rv,width:int):
-        print(lv,rv)
-        result = ""
-        for idx in range(width):
-            result = result + self._or(rv[idx],lv[idx])
-        self.check_width(result,width)
-        return result
-
-    def ast_xor(self,lv,rv,width:int):
-        result = ""
-        for idx in range(width):
-            result = result + self._xor(rv[idx],lv[idx])
-        self.check_width(result,width)
-        return result
-
-    def ast_not(iv):
-        result = ""
-        for idx in range(width):
-            result = result + self._not(iv[idx])
-        self.check_width(result,width)
-        return result
-
-    def _and(self,lv,rv):
-        rv = rv.replace("z","x")
-        lv = lv.replace("z","x")
-        if rv+lv == "xx":
-            return "x"
-        elif "x" in rv+lv:
-            if "0" in rv+lv:
-                return "0"
-            else:
-                return "x"
-        else:
-            return "1"
-
-    def _or(self,lv,rv):
-        rv = rv.replace("z","x")
-        lv = lv.replace("z","x")
-        if rv+lv == "xx":
-            return "x"
-        elif "x" in rv+lv:
-            if "1" in rv+lv:
-                return "1"
-            else:
-                return "x"
-        else:
-            return "0"
-
-    def _xor(self,lv,rv):
-        rv = rv.replace("z","x")
-        lv = lv.replace("z","x")
-        if "x" in rv+lv:
-            return "x"
-        else:
-            if rv == lv:
-                return "0"
-            else:
-                return "1"
-
-    def _not(self,v):
-        v = v.replace("z","x")
-        if v == "x":
-            return "x"
-        else:
-            if v == "1":
-                return "0"
-            else:
-                return "1"
-
-    def ast_shiftl(self,lv,rv,width:int):
-        if "x" in rv:
-            result = "x"*width
-        else:
-            offset = int(rv,2)
-            result = lv[offset:] + "0"*offset
-        self.check_width(result,width)
-        return result
-
-    def ast_shiftr(self,lv,rv,width:int):
-        if "x" in rv:
-            result = "x"*width
-        else:
-            offset = int(rv,2)
-            result = "0"*offset + lv[:-(offset)]
-        self.check_width(result,width)
-        return result
-
-
-    def _half_add(self,lv,rv,carry):
-        if "x" in lv+rv+carry:
-            if (lv+rv+carry).find("1") == 0:
-                new_carry = "0"
-            elif (lv+rv+carry).find("1") == 1:
-                new_carry = "x"
-            elif (lv+rv+carry).find("1") > 1:
-                new_carry = "1"
-            result = "x"
-        else:
-            if (lv+rv+carry).find("1")%2 == 1:
-                result = "1"
-            else:
-                result = "0"
-            if (lv+rv+carry).find("1") > 1:
-                new_carry = "1"
-            else:
-                new_carry = "0"
-        return result, new_carry
-
-            
-
-    def ast_add(self,lv,rv,width:int):
-        if rv[0] == "1":
-            rv = "-0b"+rv
-        if lv[0] == "1":
-            lv = "-0b"+lv
-        result = int(rv, 2) + int(lv, 2)
-        result = f"{result:0{width}b}"
-        result = format(result & int("1"*width,2),f"{width}b")
-        return result
-
-    def ast_sub(self,lv,rv,width:int):
-        if rv[0] == "1":
-            rv = "-0b"+rv
-        if lv[0] == "1":
-            lv = "-0b"+lv
-        result = int(rv, 2) - int(lv, 2)
-        result = f"{result:0{width}b}"
-        result = format(result & int("1"*width,2),f"{width}b")
-        return result
-
-    def ast_muls(self,lv,rv,width:int):
-        if rv[0] == "1":
-            rv = "-0b"+rv
-        if lv[0] == "1":
-            lv = "-0b"+lv
-        result = int(rv, 2) * int(lv, 2)
-        result = f"{result:0{width}b}"
-        result = format(result & int("1"*width,2),f"{width}b")
-        return result
-
-    def ast_eq(self,lv,rv):
-        if rv == lv:
-            return "1"
-        else:
-            return "0"
-
-    def ast_neq(self,lv,rv):
-        if rv != lv:
-            return "1"
-        else:
-            return "0"
-
-    def ast_gt(self,lv,rv):
-        for idx in range(width):
-            if lv[idx]+rv[idx] == "10":
-                return "1"
-            elif "x" in lv[idx]+rv[idx]:
-                return "x"
-        return "0"
-
-    def ast_lt(self,lv,rv):
-        for idx in range(width):
-            if lv[idx]+rv[idx] == "01":
-                return "1"
-            elif "x" in lv[idx]+rv[idx]:
-                return "x"
-        return "0"
-
-    def ast_gte(self,lv,rv):
-        lt = self.ast_lt(lv,rv,width)
-        if lt == "x":
-            return "x"
-        elif lt == "1":
-            return "0"
-        else:
-            return "1"
-
-    def ast_lte(self,lv,rv):
-        gt = self.ast_gt(lv,rv,width)
-        if gt == "x":
-            return "x"
-        elif gt == "1":
-            return "0"
-        else:
-            return "1"
-
-    def ast_concat(self,lv,rv):
-        return lv+rv
 
     def check_len(self,s:str,l:int):
         return len(s) == l
@@ -410,26 +242,23 @@ class SimulatorCompute(SimulatorExecute):
         if not self.check_len(s,l):
             raise SimulationError("result width doesn't match the node output width.",0)
 
-    def assign(self,node):
-        pass
-
-class Simulator(SimulatorCompute):
+class Simulator(SimulatorExecute):
     def __init__(self,ast):
-        SimulatorCompute.__init__(self,ast)
+        SimulatorExecute.__init__(self,ast)
         self.dumper = AstDumpSimulatorSigList(self.ast)
 
+    def fault_list_init(self):
+        for node in self.my_ast.register_list:
+            name = node.name
+
+
     def simulate_1_cyc(self):
-        t_set = set()
-        for node in self.ast_node_list:
-            t_set.add(type(node))
-        for subcircuit_id in self.ordered_subcircuit_id_head:
-            entry_id = self.my_ast._map__treeid_2_node[subcircuit_id]
-            entry_node = self.get_node(entry_id)
-            self.execute(entry_node)
-        for subcircuit_id in self.ordered_subcircuit_id_tail:
-            entry_id = self.my_ast._map__treeid_2_node[subcircuit_id]
-            entry_node = self.get_node(entry_id)
-            self.execute(entry_node)
+        for subcircuit_id in self.my_ast.ordered_subcircuit_id_head:
+            entry_node = self.my_ast.subtreeroot_node(subcircuit_id)
+            self.execute_comb(entry_node)
+        for subcircuit_id in self.my_ast.ordered_subcircuit_id_tail:
+            entry_node = self.my_ast.subtreeroot_node(subcircuit_id)
+            self.execute_seq(entry_node)
 
 
     def process(self):
@@ -437,7 +266,7 @@ class Simulator(SimulatorCompute):
         self.varname_list = self.load_ordered_varname()
         self.load_logic_value(100000)
         # simulation
-        #self.simulate()
+        self.simulate_1_cyc()
 
 
 if __name__ == "__main__":

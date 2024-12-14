@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from exceptions import ASTConstructionError
 
 class Verilog_AST_Base_Node:
     def __init__(self):
@@ -68,14 +69,14 @@ class Verilog_AST_IF_Node(Verilog_AST_Control_Node):
         self._tag = "if"
 
     @property
-    def true_id(self):
+    def true_node(self):
         if len(self._children) < 2:
             return None
         else:
             return self._children[1]
 
     @property
-    def false_id(self):
+    def false_node(self):
         if len(self._children) < 3:
             return None
         else:
@@ -91,7 +92,7 @@ class Verilog_AST_CASE_Node(Verilog_AST_Control_Node):
         if len(self._children) <= 1:
             return []
         else:
-            return [ self._ast_tree.nodes[node_id] for node_id in self._children[1:]]
+            return [ node for node in self._children[1:]]
 
 class Verilog_AST_CASEITEM_Node(Verilog_AST_Node):
     def __init__(self):
@@ -101,7 +102,7 @@ class Verilog_AST_CASEITEM_Node(Verilog_AST_Node):
 
     @property
     def other_children(self):
-        if len(self._children) == self.condition_end_pos:
+        if len(self._children) == self.code_start_pos:
             return []
         else:
             return self._children[self.code_start_pos:]
@@ -125,6 +126,20 @@ class Verilog_AST_Circuit_Node(Verilog_AST_Node):
         else:
             self._value = "x"*self._width
         self._signed = False
+        self.fault_list = []
+
+    @property
+    def node(self):
+        if self._tag == "varref":
+            return self.ref_node
+        elif self._tag == "arraysel":
+            target_node = self._children[0].node
+            idx = int(self._children[1].value,2)
+            return target_node.children[idx]
+        elif self._tag == "var":
+            return self
+        else:
+            return self
 
     @property
     def signed(self):
@@ -140,14 +155,21 @@ class Verilog_AST_Circuit_Node(Verilog_AST_Node):
 
     @property
     def value(self):
-        return self._value
+        target = self.node
+        if target._tag == "var":
+            return target._value
+        elif target._tag == "unpackarray":
+            raise SimulationError(f"Cannot directly access the value of an <unpackarray>",1)
+        else:
+            return target._value
+
 
     @value.setter
     def value(self,value:str):
         if len(value) == self._width:
             self._value = value
         else:
-            raise Verilog_AST_Construction_Exception("value and width doesn't match.",0)
+            raise ASTConstructionError(f"value and width doesn't match. tag = {self._tag}",0)
 
 class Verilog_AST_Var_Node(Verilog_AST_Circuit_Node):
     def __init__(self,width:int):

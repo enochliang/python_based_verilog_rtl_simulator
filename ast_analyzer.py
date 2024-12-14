@@ -151,10 +151,6 @@ if __name__ == "__main__":
         print("# Start parsing ["+ast_file+"] #")
         print("#"*len("# Start analyzing ["+ast_file+"] #"))
         analyzer = AstAnalyzer(ast)
-        id_set = set()
-        for type_ in ast.findall(".//basicdtype"):
-            id_set.add(type_.attrib["name"])
-
-        print(id_set)
+        analyzer.get_children_unique__under("arraysel")
 
 

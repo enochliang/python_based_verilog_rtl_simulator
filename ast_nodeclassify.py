@@ -20,7 +20,8 @@ class AstNodeClassify:
 
         self.comp_op__eq = {"eq", "neq"}
         self.comp_op__neq = {"gt", "gte", "lt", "lte"}
-        self.comp_op = self.comp_op__eq | self.comp_op__neq
+        self.comp_op__neqs = {"gts", "gtes", "lts", "ltes"}
+        self.comp_op = self.comp_op__eq | self.comp_op__neq | self.comp_op__neqs
 
         self.reg_manip_op__merge = {"concat"}
         self.reg_manip_op__extend = {"extend","extends"}

@@ -38,6 +38,8 @@ class AstConstructBase:
 
         # the new defined ast data structure
         self.my_ast = Verilog_AST()
+        self.my_ast.ordered_subcircuit_id_head = self.scheduled_ast.ordered_subcircuit_id_head
+        self.my_ast.ordered_subcircuit_id_tail = self.scheduled_ast.ordered_subcircuit_id_tail
 
 
 class AstConstructAddVar(AstConstructBase):
