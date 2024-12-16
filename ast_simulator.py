@@ -67,8 +67,7 @@ class SimulatorExecute(AstNodeClassify):
             print(f"lv_name = {lv_name}")
             print(f"    init_value = {init_value}")
             print(f"    final_value = {final_value}")
-        else:
-            print("yes")
+            raise SimulationError("computed value & dumped value mismatch.",6)
 
         #self.execute_df(node)
 
@@ -101,11 +100,10 @@ class SimulatorExecute(AstNodeClassify):
         self.compute_rtl(left_node)
         #self.propagate_df(right_node)
 
-        # get right value result
+        #origin_value get right value result
         value = right_node.value
         width = len(value)
         self.assign_rtl_lv(left_node, value, width, 0)
-        #fault_list = right_node.fault_list
 
     def assign_rtl_lv(self, node, value:str, width:int, start_bit:int = 0):
         if node.tag == "sel":
@@ -185,38 +183,14 @@ class SimulatorExecute(AstNodeClassify):
         elif node.tag == "arraysel":
             return
         elif node.tag == "sel":
-            #print("var_value = ",node.children[0].value)
-            #print("start_value = ",node.children[1].node.value,node.children[1].tag)
-            #print("width_value = ",node.children[2].node.value,node.children[2].tag)
-
-            if "x" in node.children[1].value:
-                result = "x" * width
-            else:
-                var_value = node.children[0].value
-                start_bit = int(node.children[1].value,2)
-                bit_width = int(node.children[2].value,2)
-                if start_bit == 0:
-                    result = var_value[-bit_width:]
-                else:
-                    result = var_value[-start_bit-bit_width:-start_bit]
+            result = val_sel(node)
         elif node.tag in self.op__2_port:
             result = val_2_op(node)
         elif node.tag in self.op__1_port:
             result = val_1_op(node)
         else:
             if node.tag == "cond":
-                #if node.attrib["loc"] == "e,2491,37,2491,38":
-                #    print("c_value = ",node.children[0].value)
-                #    print("t_value = ",node.children[1].node.value,node.children[1].tag)
-                #    print("f_value = ",node.children[2].node.value,node.children[2].tag)
-                c_value = node.children[0].value
-                c_value.replace("z","x")
-                if c_value == "1":
-                    result = node.children[1].value
-                elif c_value == "0":
-                    result = node.children[2].value
-                else:
-                    result = "x"*width
+                result = val_cond(node)
             elif node.tag == "const":
                 return
             else:
@@ -311,11 +285,18 @@ class Simulator(SimulatorExecute):
             entry_node = self.my_ast.subtreeroot_node(subcircuit_id)
             self.execute_seq(entry_node)
 
+    def simulate(self):
+        self.dumper.dump_sig_dict()
+        self.load_ordered_varname()
+        for cyc in range(1000,100000):
+            self.load_logic_value(cyc)
+            # simulation
+            self.simulate_1_cyc()
 
     def process(self):
         self.dumper.dump_sig_dict()
         self.load_ordered_varname()
-        self.load_logic_value(100000)
+        self.load_logic_value(8517)
         self.my_ast.show_var_value()
         # simulation
         self.simulate_1_cyc()
@@ -340,5 +321,5 @@ if __name__ == "__main__":
         ast = Verilator_AST_Tree(ast_file)
 
         ast_sim = Simulator(ast)
-        ast_sim.process()
+        ast_sim.simulate()
 

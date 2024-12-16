@@ -1,5 +1,5 @@
 from exceptions import SimulationError
-from num_convert import bin_2_signed_int
+from num_convert import bin_2_signed_int, signed_int_2_bin
 
 def _and(lv:str,rv:str):
     rv = rv.replace("z","x")
@@ -114,52 +114,71 @@ def val_shiftrs(lv:str,rv:str,width:int):
         result = "x"*width
     else:
         offset = int(rv,2)
-        result = lv[0]*offset + lv[:-(offset)]
+        if offset == 0:
+            result = lv
+        else:
+            result = lv[0]*offset + lv[:-(offset)]
     return result
 
 def val_add(lv:str,rv:str,width:int):
     if "x" in lv+rv:
         return "x"*width
-    if rv[0] == "1":
-        rv = "-0b"+rv
-    if lv[0] == "1":
-        lv = "-0b"+lv
-    result = int(rv, 2) + int(lv, 2)
-    result = f"{result:0{width}b}"
-    #result = format(result & int("1"*width,2),f"{width}b")
+    rv = bin_2_signed_int(rv)
+    lv = bin_2_signed_int(lv)
+    result = lv + rv
+    result = signed_int_2_bin(result,width)
     return result
 
 def val_sub(lv:str,rv:str,width:int):
     if "x" in lv+rv:
         return "x"*width
-    if rv[0] == "1":
-        rv = "-0b"+rv
-    if lv[0] == "1":
-        lv = "-0b"+lv
-    result = int(rv, 2) - int(lv, 2)
-    result = f"{result:0{width}b}"
-    #result = format(result & int("1"*width,2),f"{width}b")
+    rv = bin_2_signed_int(rv)
+    lv = bin_2_signed_int(lv)
+    result = lv - rv
+    result = signed_int_2_bin(result,width)
     return result
 
 def val_muls(lv:str,rv:str,width:int):
     if "x" in lv+rv:
         return "x"*width
-    if rv[0] == "1":
-        rv = "-0b"+rv
-    if lv[0] == "1":
-        lv = "-0b"+lv
-    result = int(rv, 2) * int(lv, 2)
-    result = f"{result:0{width}b}"
-    #result = format(result & int("1"*width,2),f"{width}b")
+    rv = bin_2_signed_int(rv)
+    lv = bin_2_signed_int(lv)
+    result = lv * rv
+    result = signed_int_2_bin(result,width)
     return result
 
 def val_eq(lv:str,rv:str):
-    if rv == lv:
+    width = len(lv)
+    x_flag = False
+    for idx in range(width):
+        if "x" not in lv[idx]+rv[idx]:
+            if lv[idx] != rv[idx]:
+                return "0"
+        else:
+            x_flag = True
+            
+    if x_flag:
+        return "x"
+    else:
         return "1"
+
+def val_neq(lv:str,rv:str):
+    width = len(lv)
+    x_flag = False
+    for idx in range(width):
+        if "x" not in lv[idx]+rv[idx]:
+            if lv[idx] != rv[idx]:
+                return "1"
+        else:
+            x_flag = True
+            
+    if x_flag:
+        return "x"
     else:
         return "0"
 
-def val_neq(lv:str,rv:str):
+
+
     if rv != lv:
         return "1"
     else:
@@ -167,8 +186,11 @@ def val_neq(lv:str,rv:str):
 
 def val_gt(lv:str,rv:str):
     width = len(lv)
+    eq_flag = True
     for idx in range(width):
-        if lv[idx]+rv[idx] == "10":
+        if lv[idx]+rv[idx] == "01":
+            return "0"
+        elif lv[idx]+rv[idx] == "10":
             return "1"
         elif "x" in lv[idx]+rv[idx]:
             return "x"
@@ -176,8 +198,11 @@ def val_gt(lv:str,rv:str):
 
 def val_lt(lv:str,rv:str):
     width = len(lv)
+    eq_flag = True
     for idx in range(width):
-        if lv[idx]+rv[idx] == "01":
+        if lv[idx]+rv[idx] == "10":
+            return "0"
+        elif lv[idx]+rv[idx] == "01":
             return "1"
         elif "x" in lv[idx]+rv[idx]:
             return "x"
@@ -393,5 +418,44 @@ def val_2_op(node):
     else:
         raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",1)
 
+    return result
+
+def val_sel(node):
+    #print("var_value = ",node.children[0].value)
+    #print("start_value = ",node.children[1].node.value,node.children[1].tag)
+    #print("width_value = ",node.children[2].node.value,node.children[2].tag)
+
+    if "x" in node.children[1].value:
+        result = "x" * width
+    else:
+        var_value = node.children[0].value
+        start_bit = int(node.children[1].value,2)
+        bit_width = int(node.children[2].value,2)
+        if start_bit == 0:
+            result = var_value[-bit_width:]
+        else:
+            result = var_value[-start_bit-bit_width:-start_bit]
+    return result
+
+
+def val_cond(node):
+    width = node.width
+    c_value = node.children[0].value
+    c_value.replace("z","x")
+    t_value = node.children[1].value
+    f_value = node.children[2].value
+    if c_value == "1":
+        result = t_value
+    elif c_value == "0":
+        result = f_value
+    else:
+        result = ''
+        for idx in range(width):
+            if "11" == t_value[idx]+f_value[idx]:
+                result = result + "1"
+            elif "00" == t_value[idx]+f_value[idx]:
+                result = result + "0"
+            else:
+                result = result + "x"
     return result
 
