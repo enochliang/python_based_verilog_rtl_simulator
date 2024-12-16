@@ -288,7 +288,7 @@ class Simulator(SimulatorExecute):
     def simulate(self):
         self.dumper.dump_sig_dict()
         self.load_ordered_varname()
-        for cyc in range(1000,100000):
+        for cyc in range(500,485080):
             self.load_logic_value(cyc)
             # simulation
             self.simulate_1_cyc()
