@@ -106,6 +106,10 @@ class AstConstructAddTree(AstConstructAddVar):
             value = node.attrib["name"]
             value = self.analyzer.vnum2bin(value)
             new_node.value = value
+            if node.attrib["loc"] == "e,2491,39,2491,45":
+                print(f"value = {new_node.value}")
+
+
         return new_node
 
     def _add_ast_case(self):
@@ -115,17 +119,26 @@ class AstConstructAddTree(AstConstructAddVar):
         return Verilog_AST_IF_Node()
 
     def _add_ast_caseitem(self):
-        new_node = Verilog_AST_CASEITEM_Node()
-        return new_node
+        return Verilog_AST_CASEITEM_Node()
 
     def _add_ast_assign(self,node):
         return Verilog_AST_Assign_Node()
 
     def add_ast_child(self,node):
-        if node.tag == "varref":
+        if node.tag == "always":
+            new_node = Verilog_AST_Node()
+            new_node.tag = node.tag
+            if "lv_name" in node.attrib:
+                new_node.attrib["lv_name"] = node.attrib["lv_name"]
+        elif node.tag == "varref":
             new_node = self._add_ast_varref(node)
+        elif "contassign" in node.tag:
+            new_node = self._add_ast_assign(node)
+            if "lv_name" in node.attrib:
+                new_node.attrib["lv_name"] = node.attrib["lv_name"]
         elif "assign" in node.tag:
             new_node = self._add_ast_assign(node)
+            new_node
         elif "dtype_id" in node.attrib:
             new_node = self._add_ast_circuit_node(node)
         elif node.tag == "case":
@@ -138,6 +151,8 @@ class AstConstructAddTree(AstConstructAddVar):
             new_node = Verilog_AST_Node()
             new_node.tag = node.tag
 
+        if "loc" in node.attrib:
+            new_node.attrib["loc"] = node.attrib["loc"]
         children = node.getchildren()
         for child in children:
             new_node.append(self.add_ast_child(child))

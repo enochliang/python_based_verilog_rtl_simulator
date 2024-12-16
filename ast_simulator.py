@@ -29,17 +29,17 @@ class SimulatorExecute(AstNodeClassify):
         self.logic_value_file_head = "FaultFree_Signal_Value_C"
         self.logic_value_file_tail = ".txt"
 
-    def load_ordered_varname(self) -> list:
-        varname_list = []
+    def load_ordered_varname(self):
+        self.varname_list = []
         f = open("./sig_list/simulator_sig_dict.json","r")
         for varname in json.load(f).keys():
-            varname_list.append(varname)
+            self.varname_list.append(varname)
         f.close()
-        return varname_list
 
     def load_logic_value_file(self,cycle,width:int=7) -> list:
         # Fetch logic value dump file at the specific clock cycle
         target_filename = self.logic_value_file_dir + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
+        print(f"reading file: {target_filename}")
         f = open(target_filename,"r")
         logic_value_list = f.readlines()
         logic_value_list = [value.strip() for value in logic_value_list]
@@ -58,7 +58,18 @@ class SimulatorExecute(AstNodeClassify):
 
 
     def execute_comb(self,node):
+        lv_name = node.attrib["lv_name"]
+        init_value = self.my_ast.var_node(lv_name).value
+        #print(lv_name,origin_value)
         self.execute_rtl(node)
+        final_value = self.my_ast.var_node(lv_name).value
+        if "__Vdfg" not in lv_name and init_value != final_value:
+            print(f"lv_name = {lv_name}")
+            print(f"    init_value = {init_value}")
+            print(f"    final_value = {final_value}")
+        else:
+            print("yes")
+
         #self.execute_df(node)
 
 
@@ -83,14 +94,45 @@ class SimulatorExecute(AstNodeClassify):
 
     def execute_rtl_assign(self,node):
         right_node = node.rv_node
+        left_node = node.lv_node
 
         # visit
         self.compute_rtl(right_node)
+        self.compute_rtl(left_node)
         #self.propagate_df(right_node)
 
         # get right value result
         value = right_node.value
+        width = len(value)
+        self.assign_rtl_lv(left_node, value, width, 0)
         #fault_list = right_node.fault_list
+
+    def assign_rtl_lv(self, node, value:str, width:int, start_bit:int = 0):
+        if node.tag == "sel":
+            start_bit = node.children[1].value
+            if "x" in start_bit:
+                value = node.children[0].value
+                width = len(value)
+                value = "x"*width
+                self.assign_rtl_lv(node.children[0], value, width, 0)
+            else:
+                start_bit = int(node.children[1].value,2)
+                width = int(node.children[2].value,2)
+                self.assign_rtl_lv(node.children[0], value, width, start_bit)
+        elif node.tag == "arraysel":
+            idx = int(node.children[1].value,2)
+            self.assign_rtl_lv(node.children[0].node.children[idx], value, width, start_bit)
+        elif node.tag == "varref":
+            self.assign_rtl_lv(node.ref_node, value, width, start_bit)
+        elif node.tag == "var":
+            origin_value = node.value
+            if start_bit == 0:
+                new_value = origin_value[:-width] + value
+            else:
+                new_value = origin_value[:-start_bit-width] + value + origin_value[-start_bit:]
+            node.value = new_value
+        else:
+            raise SimulationError(f"Unknown signal node to assign: tag = {node.tag}.",5)
 
     def execute_rtl_if(self,node):
         ctrl_node = node.ctrl_node
@@ -139,12 +181,14 @@ class SimulatorExecute(AstNodeClassify):
             self.compute_rtl(child)
 
         if node.tag == "varref":
-            pass
+            return
         elif node.tag == "arraysel":
-            pass
-            #array_node = node.children[0]
-            #idx = int(node.children[1].value,2)
+            return
         elif node.tag == "sel":
+            #print("var_value = ",node.children[0].value)
+            #print("start_value = ",node.children[1].node.value,node.children[1].tag)
+            #print("width_value = ",node.children[2].node.value,node.children[2].tag)
+
             if "x" in node.children[1].value:
                 result = "x" * width
             else:
@@ -152,15 +196,19 @@ class SimulatorExecute(AstNodeClassify):
                 start_bit = int(node.children[1].value,2)
                 bit_width = int(node.children[2].value,2)
                 if start_bit == 0:
-                    result = var_value[-1-bit_width:]
+                    result = var_value[-bit_width:]
                 else:
-                    result = var_value[-(start_bit+1)-bit_width:-(start_bit+1)]
+                    result = var_value[-start_bit-bit_width:-start_bit]
         elif node.tag in self.op__2_port:
             result = val_2_op(node)
         elif node.tag in self.op__1_port:
             result = val_1_op(node)
         else:
             if node.tag == "cond":
+                #if node.attrib["loc"] == "e,2491,37,2491,38":
+                #    print("c_value = ",node.children[0].value)
+                #    print("t_value = ",node.children[1].node.value,node.children[1].tag)
+                #    print("f_value = ",node.children[2].node.value,node.children[2].tag)
                 c_value = node.children[0].value
                 c_value.replace("z","x")
                 if c_value == "1":
@@ -170,15 +218,23 @@ class SimulatorExecute(AstNodeClassify):
                 else:
                     result = "x"*width
             elif node.tag == "const":
-                pass
+                return
             else:
                 raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",3)
         
+        self.check_width(node,result)
+        node.value = result
+
+    def check_width(self,node,result):
         if result is not None:
-            if len(result) == width:
-                node.value = result
-            else:
+            width = node.width
+            if not self.check_len(result,width):
+                if "loc" in node.attrib:
+                    print(f"loc = {node.attrib['loc']}")
                 raise SimulationError(f"result and width mismatch: tag = {node.tag}, result = {result}, width = {width}.",4)
+
+    def check_len(self,s:str,l:int):
+        return len(s) == l
 
     #------------------------------------------------------
 
@@ -235,12 +291,7 @@ class SimulatorExecute(AstNodeClassify):
     
 
 
-    def check_len(self,s:str,l:int):
-        return len(s) == l
 
-    def check_width(self,result:str,width:int):
-        if not self.check_len(s,l):
-            raise SimulationError("result width doesn't match the node output width.",0)
 
 class Simulator(SimulatorExecute):
     def __init__(self,ast):
@@ -263,8 +314,9 @@ class Simulator(SimulatorExecute):
 
     def process(self):
         self.dumper.dump_sig_dict()
-        self.varname_list = self.load_ordered_varname()
+        self.load_ordered_varname()
         self.load_logic_value(100000)
+        self.my_ast.show_var_value()
         # simulation
         self.simulate_1_cyc()
 

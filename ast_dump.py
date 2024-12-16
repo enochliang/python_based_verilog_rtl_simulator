@@ -17,6 +17,7 @@ class AstDumpSimulatorSigList:
     def __init__(self,ast):
         self.ast = ast
         self._dict__varname_2_width = {}
+        self.get_dict__var_width()
 
     def ast_process(self):
         # start scheduling

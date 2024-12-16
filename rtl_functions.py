@@ -1,15 +1,15 @@
 from exceptions import SimulationError
+from num_convert import bin_2_signed_int
 
 def _and(lv:str,rv:str):
     rv = rv.replace("z","x")
     lv = lv.replace("z","x")
     if rv+lv == "xx":
         return "x"
+    elif "0" in rv+lv:
+        return "0"
     elif "x" in rv+lv:
-        if "0" in rv+lv:
-            return "0"
-        else:
-            return "x"
+        return "x"
     else:
         return "1"
 
@@ -18,11 +18,10 @@ def _or(lv:str,rv:str):
     lv = lv.replace("z","x")
     if rv+lv == "xx":
         return "x"
+    elif "1" in rv+lv:
+        return "1"
     elif "x" in rv+lv:
-        if "1" in rv+lv:
-            return "1"
-        else:
-            return "x"
+        return "x"
     else:
         return "0"
 
@@ -127,7 +126,7 @@ def val_add(lv:str,rv:str,width:int):
         lv = "-0b"+lv
     result = int(rv, 2) + int(lv, 2)
     result = f"{result:0{width}b}"
-    result = format(result & int("1"*width,2),f"{width}b")
+    #result = format(result & int("1"*width,2),f"{width}b")
     return result
 
 def val_sub(lv:str,rv:str,width:int):
@@ -167,6 +166,7 @@ def val_neq(lv:str,rv:str):
         return "0"
 
 def val_gt(lv:str,rv:str):
+    width = len(lv)
     for idx in range(width):
         if lv[idx]+rv[idx] == "10":
             return "1"
@@ -205,10 +205,26 @@ def val_lte(lv:str,rv:str):
 
 
 def val_gts(lv:str,rv:str):
-    pass
+    if "x" in lv+rv:
+        return "x"
+    else:
+        lv = bin_2_signed_int(lv)
+        rv = bin_2_signed_int(rv)
+        if lv > rv:
+            return "1"
+        else:
+            return "0"
 
 def val_lts(lv:str,rv:str):
-    pass
+    if "x" in lv+rv:
+        return "x"
+    else:
+        lv = bin_2_signed_int(lv)
+        rv = bin_2_signed_int(rv)
+        if lv < rv:
+            return "1"
+        else:
+            return "0"
 
 def val_gtes(lv:str,rv:str): 
     lts = val_lts(lv,rv)
@@ -229,6 +245,22 @@ def val_ltes(lv:str,rv:str):
 
 def val_concat(lv:str,rv:str):
     return lv+rv
+
+def val_logand(lv:str,rv:str):
+    lv = val_redor(lv)
+    rv = val_redor(rv)
+    return val_and(lv,rv,1)
+
+
+def val_logor(lv:str,rv:str):
+    lv = val_redor(lv)
+    rv = val_redor(rv)
+    return val_or(lv,rv,1)
+
+def val_replicate(lv:str,rv:str):
+    rep_num = int(rv,2)
+    return lv*rep_num
+
 
 def val_redor(v:str):
     if "1" in v:
@@ -251,9 +283,44 @@ def val_redand(v:str):
 def val_extend(v:str,width:int):
     delta = width - len(v)
     return ("0" * delta) + v
+
 def val_extends(v:str,width:int):
     delta = width - len(v)
     return (v[0] * delta) + v
+
+def val_negate(v:str) -> str:
+    width = len(v)
+    """
+    Negate a binary number represented as a string using two's complement.
+
+    Args:
+        i_value (str): The binary number in string format (e.g., "1010").
+
+    Returns:
+        str: The binary representation of the negative of the input number.
+    """
+    # Validate input
+    if not v or not all(bit in '01x' for bit in v):
+        raise ValueError("Input must be a non-empty binary string.")
+
+    if "x" in v:
+        return "x"*width
+
+    # Convert binary string to an integer
+    bit_length = len(v)
+    number = int(v, 2)
+
+    # Handle signed two's complement: calculate the negative
+    if v[0] == '1':
+        # If the number is already negative (MSB is 1), interpret it as a signed number
+        number -= (1 << bit_length)
+
+    negated_number = -number
+
+    # Convert the negative number back to a binary string with the same bit length
+    negated_binary = format((negated_number + (1 << bit_length)) % (1 << bit_length), f'0{bit_length}b')
+
+    return negated_binary
 
 
 def val_1_op(node):
@@ -270,6 +337,8 @@ def val_1_op(node):
         result = val_redor(i_value)
     elif node.tag == "redand":
         result = val_redand(i_value)
+    elif node.tag == "negate":
+        result = val_negate(i_value)
     else:
         raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",2)
     return result
@@ -277,10 +346,10 @@ def val_1_op(node):
 
 def val_2_op(node):
     width = node.width
-    r_value = node.children[0].value
-    l_value = node.children[1].value
-    r_value = r_value.replace("z","x")
+    l_value = node.children[0].value
+    r_value = node.children[1].value
     l_value = l_value.replace("z","x")
+    r_value = r_value.replace("z","x")
     if node.tag == "and":
         result = val_and(l_value,r_value,width)
     elif node.tag == "or":
@@ -315,6 +384,12 @@ def val_2_op(node):
         result = val_lts(l_value,r_value)
     elif node.tag == "concat":
         result = val_concat(l_value,r_value)
+    elif node.tag == "logand":
+        result = val_logand(l_value,r_value)
+    elif node.tag == "logor":
+        result = val_logor(l_value,r_value)
+    elif node.tag == "replicate":
+        result = val_replicate(l_value,r_value)
     else:
         raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",1)
 

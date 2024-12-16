@@ -2,6 +2,7 @@ class AstNodeClassify:
     def __init__(self):
         
         # OPs
+        self.arith_op__negate = {"negate"}
         self.arith_op__uncomm = {"sub"}
         self.arith_op__comm = {"add","mul","muls"}
         self.arith_op__shift = {"shiftrs","shiftr","shiftl"}
@@ -11,7 +12,7 @@ class AstNodeClassify:
         self.arith_op__logic_2_port = self.arith_op__logic_2_port__pass | self.arith_op__logic_2_port__mask
         self.arith_op__logic_1_port = {"not"}
         self.arith_op__2_port = self.arith_op__uncomm | self.arith_op__comm | self.arith_op__shift | self.arith_op__logic_2_port
-        self.arith_op__1_port = self.arith_op__logic_1_port
+        self.arith_op__1_port = self.arith_op__logic_1_port | self.arith_op__negate
         self.arith_op = self.arith_op__2_port | self.arith_op__1_port
 
         self.logic_op__red = {"redand", "redor", "redxor"}
@@ -33,7 +34,7 @@ class AstNodeClassify:
 
         self.always_prop_op = self.arith_op__uncomm | self.arith_op__comm | self.arith_op__logic_1_port | self.arith_op__logic_2_port__pass | self.reg_manip_op
 
-        self.op__2_port = self.arith_op__2_port | self.logic_op__log | self.comp_op | self.reg_manip_op__merge
+        self.op__2_port = self.arith_op__2_port | self.logic_op__log | self.comp_op | self.reg_manip_op__merge | self.reg_manip_op__replicate
         self.op__1_port = self.arith_op__1_port | self.logic_op__red | self.reg_manip_op__extend
 
 

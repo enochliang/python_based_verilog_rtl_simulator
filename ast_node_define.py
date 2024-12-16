@@ -138,6 +138,8 @@ class Verilog_AST_Circuit_Node(Verilog_AST_Node):
             return target_node.children[idx]
         elif self._tag == "var":
             return self
+        elif self._tag == "const":
+            return self
         else:
             return self
 

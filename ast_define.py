@@ -39,3 +39,8 @@ class Verilog_AST:
 
     def output_append(self,node):
         self.output_list.append(node)
+
+    def show_var_value(self):
+        for varname in self._map__name_2_varnode:
+            value = self._map__name_2_varnode[varname].value
+            print(varname,value)
