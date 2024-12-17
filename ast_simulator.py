@@ -57,6 +57,10 @@ class SimulatorExecute(AstNodeClassify):
             var = self.my_ast.var_node(varname)
             var.value = value
 
+    def init_fault_list(self):
+        for node in self.my_ast.register_list:
+            fault_name = node.name
+            node.fault_list = {(fault_name,"stay"):1.0}
 
     def execute_comb(self,node):
         lv_name = node.attrib["lv_name"]
@@ -185,17 +189,16 @@ class SimulatorExecute(AstNodeClassify):
             return
         elif node.tag == "sel":
             result = val_sel(node)
+        elif node.tag == "cond":
+            result = val_cond(node)
+        elif node.tag == "const":
+            return
         elif node.tag in self.op__2_port:
             result = val_2_op(node)
         elif node.tag in self.op__1_port:
             result = val_1_op(node)
         else:
-            if node.tag == "cond":
-                result = val_cond(node)
-            elif node.tag == "const":
-                return
-            else:
-                raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",3)
+            raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",3)
         
         self.check_width(node,result)
         node.value = result
@@ -266,12 +269,7 @@ class Simulator(SimulatorExecute):
         SimulatorExecute.__init__(self,ast)
         self.dumper = AstDumpSimulatorSigList(self.ast)
 
-    def fault_list_init(self):
-        for node in self.my_ast.register_list:
-            name = node.name
-
-
-    def simulate_1_cyc(self):
+    def propagate(self):
         for subcircuit_id in self.my_ast.ordered_subcircuit_id_head:
             entry_node = self.my_ast.subtreeroot_node(subcircuit_id)
             self.execute_comb(entry_node)
@@ -279,22 +277,30 @@ class Simulator(SimulatorExecute):
             entry_node = self.my_ast.subtreeroot_node(subcircuit_id)
             self.execute_seq(entry_node)
 
+    def simulate_1_cyc(self,cyc:int):
+        self.load_logic_value(cyc)
+        self.init_fault_list()
+        self.propagate()
+
     def simulate(self):
+        self.preprocess()
+        for cyc in range(500,485080):
+            # simulation
+            self.simulate_1_cyc(cyc)
+
+    def preprocess(self):
         self.dumper.dump_sig_dict()
         self.load_ordered_varname()
-        for cyc in range(500,485080):
-            self.load_logic_value(cyc)
-            # simulation
-            self.simulate_1_cyc()
 
     def process(self):
-        self.ast_dumper.dump()
-        self.dumper.dump_sig_dict()
-        self.load_ordered_varname()
-        self.load_logic_value(8517)
+        self.preprocess()
+        self.simulate_1_cyc(8517)
+        #self.ast_dumper.dump()
+        #self.dumper.dump_sig_dict()
+        #self.load_ordered_varname()
         #self.my_ast.show_var_value()
         # simulation
-        self.simulate_1_cyc()
+        #self.simulate_1_cyc(8517)
 
 
 if __name__ == "__main__":

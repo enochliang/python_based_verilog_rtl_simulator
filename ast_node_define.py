@@ -126,7 +126,7 @@ class Verilog_AST_Circuit_Node(Verilog_AST_Node):
         else:
             self._value = "x"*self._width
         self._signed = False
-        self.fault_list = []
+        self._fault_list = {}
 
     @property
     def node(self):
@@ -172,6 +172,18 @@ class Verilog_AST_Circuit_Node(Verilog_AST_Node):
             self._value = value
         else:
             raise ASTConstructionError(f"value and width doesn't match. tag = {self._tag}",0)
+
+    @property
+    def fault_list(self):
+        target = self.node
+        if target._tag == "var":
+            return target._fault_list
+        else:
+            return target._fault_list
+
+    @fault_list.setter
+    def fault_list(self,value:list):
+        self._fault_list = value
 
 class Verilog_AST_Var_Node(Verilog_AST_Circuit_Node):
     def __init__(self,width:int):
