@@ -10,6 +10,7 @@ class Verilog_AST:
         self.ordered_subcircuit_id_tail = []
         self.input_list = []
         self.register_list = []
+        self.output_wire_list = []
         self.output_list = []
 
     def _add_root(self):
@@ -39,6 +40,9 @@ class Verilog_AST:
 
     def output_append(self,node):
         self.output_list.append(node)
+
+    def output_wire_append(self,node):
+        self.output_wire_list.append(node)
 
     def show_var_value(self):
         for varname in self._map__name_2_varnode:

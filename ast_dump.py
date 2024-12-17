@@ -9,9 +9,10 @@ class AstDump:
         self.ast = ast
 
     def dump(self):
-        with open("ast_dump.xml","w") as fp:
+        etree.indent(self.ast,space="  ")
+        with open("new_ast_dump.xml","w") as fp:
             fp.write(etree.tostring(self.ast.find("."),pretty_print=True).decode())
-        print("  Dumped <ast_dump.xml>!")
+        print("  Dumped <new_ast_dump.xml>!")
 
 class AstDumpSimulatorSigList:
     def __init__(self,ast):

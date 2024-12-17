@@ -23,6 +23,7 @@ class SimulatorExecute(AstNodeClassify):
 
         # dump simulator sig list
         self.sig_dumper = AstDumpSimulatorSigList(self.ast)
+        self.ast_dumper = AstDump(self.ast)
        
         # TODO
         self.logic_value_file_dir = "../picorv32/pattern/"
@@ -200,16 +201,15 @@ class SimulatorExecute(AstNodeClassify):
         node.value = result
 
     def check_width(self,node,result):
-        if result is not None:
-            width = node.width
-            if not self.check_len(result,width):
-                if "loc" in node.attrib:
-                    print(f"loc = {node.attrib['loc']}")
-                raise SimulationError(f"result and width mismatch: tag = {node.tag}, result = {result}, width = {width}.",4)
+        #if result is not None:
+        width = node.width
+        if not self.check_len(result,width):
+            if "loc" in node.attrib:
+                print(f"loc = {node.attrib['loc']}")
+            raise SimulationError(f"result and width mismatch: tag = {node.tag}, result = {result}, width = {width}.",4)
 
     def check_len(self,s:str,l:int):
         return len(s) == l
-
     #------------------------------------------------------
 
     # Data Write-event fault propagation
@@ -217,12 +217,6 @@ class SimulatorExecute(AstNodeClassify):
     def execute_df(self,node):
         if "assign" in node.tag:
             self.execute_df_assign(node)
-        elif node.tag == "if":
-            self.execute_df_if(node)
-        elif node.tag == "case":
-            self.execute_df_case(node)
-        elif node.tag == "begin" or node.tag == "always":
-            self.execute_df_block(node)
         else:
             raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
     #------------------------------------------------------
@@ -294,10 +288,11 @@ class Simulator(SimulatorExecute):
             self.simulate_1_cyc()
 
     def process(self):
+        self.ast_dumper.dump()
         self.dumper.dump_sig_dict()
         self.load_ordered_varname()
         self.load_logic_value(8517)
-        self.my_ast.show_var_value()
+        #self.my_ast.show_var_value()
         # simulation
         self.simulate_1_cyc()
 
@@ -321,5 +316,5 @@ if __name__ == "__main__":
         ast = Verilator_AST_Tree(ast_file)
 
         ast_sim = Simulator(ast)
-        ast_sim.simulate()
+        ast_sim.process()
 

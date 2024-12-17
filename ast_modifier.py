@@ -243,7 +243,7 @@ class AstArrayFlatten:
                     new_child.attrib["name"] = f"{name}[{idx}]"
                     new_child.attrib["dtype_id"] = sub_dtype_id
                     new_child.attrib["width"] = str(self.analyzer.get_width__dtype_id(sub_dtype_id))
-                    new_child.attrib["type"] = sig_type
+                    new_child.attrib["sig_type"] = sig_type
                 node.append(new_child)
                 self._var_flatten(new_child)
         else:
@@ -255,6 +255,6 @@ class AstArrayFlatten:
                     new_child.attrib["name"] = f"{name}[{idx}]"
                     new_child.attrib["dtype_id"] = sub_dtype_id
                     new_child.attrib["width"] = str(self.analyzer.get_width__dtype_id(sub_dtype_id))
-                    new_child.attrib["type"] = sig_type
+                    new_child.attrib["sig_type"] = sig_type
                 node.append(new_child)
                 self._var_flatten(new_child)
