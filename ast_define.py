@@ -48,3 +48,7 @@ class Verilog_AST:
         for varname in self._map__name_2_varnode:
             value = self._map__name_2_varnode[varname].value
             print(varname,value)
+
+    def show_register_fault_list(self):
+        for node in self.register_list:
+            print(node.name, node.fault_list)

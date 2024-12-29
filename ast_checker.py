@@ -280,6 +280,27 @@ class AstChecker:
                     self._show_loc_info(always)
 
 
+    def _check_seq_always_only_one_lv(self):
+        print("[Checker Task] start checking each sequential <always> only has 1 Left-Value...")
+        flag = False
+        for always in self.ast.findall(".//always"):
+            if always.find(".//sentree") == None:
+                continue
+            lv_set = set()
+            for assign in always.findall(".//assign") + always.findall(".//assigndly"):
+                name = self.analyzer.get_sig_name(assign.getchildren()[1])
+                lv_set.add(name)
+
+            if len(lv_set) > 1:
+                print("  - [Checker Report] warning: found more than 1 left-value in the <always>.")
+                print("    left-values in this <always> = ")
+                pprint.pp(lv_set)
+                self._show_loc_info(always)
+                flag = True
+
+        if not flag:
+            print("  - [Checker Report] pass: each seq <always> only has 1 left-value.")
+        print("-"*80)
 
     def _check_comb_always_only_one_lv(self):
         print("[Checker Task] start checking each combinational <always> only has 1 Left-Value...")
@@ -363,6 +384,7 @@ class AstChecker:
         self._check_assign_no_concat_lv()
         self._check_comb_always_only_one_lv()
         self._check_ff_always_no_blking_assign()
+        self._check_seq_always_only_one_lv()
         self._check_initial_simple()
         self._check_assign_no_param()
         self._check_param_not_in_circuit()

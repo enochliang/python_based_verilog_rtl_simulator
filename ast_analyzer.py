@@ -151,6 +151,14 @@ if __name__ == "__main__":
         print("# Start parsing ["+ast_file+"] #")
         print("#"*len("# Start analyzing ["+ast_file+"] #"))
         analyzer = AstAnalyzer(ast)
-        analyzer.get_children_unique__under("arraysel")
+        s = set()
+        for array in ast.findall(".//arraysel"):
+            var = array.getchildren()[0]
+            s.add(var.tag)
+            if var.tag == "add":
+                print(var.attrib["loc"])
+        print(s)
+        #analyzer.get_tag__all_under("arraysel/*[1]")
+
 
 

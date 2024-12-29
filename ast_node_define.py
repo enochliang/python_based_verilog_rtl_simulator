@@ -134,8 +134,12 @@ class Verilog_AST_Circuit_Node(Verilog_AST_Node):
             return self.ref_node
         elif self._tag == "arraysel":
             target_node = self._children[0].node
-            idx = int(self._children[1].value,2)
-            return target_node.children[idx]
+            if "x" in self._children[1].value:
+                print("undetermined array index!")
+                return None
+            else:
+                idx = int(self._children[1].value,2)
+                return target_node.children[idx]
         elif self._tag == "var":
             return self
         elif self._tag == "const":
