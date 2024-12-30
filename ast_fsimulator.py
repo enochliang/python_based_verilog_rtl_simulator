@@ -195,8 +195,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     def exec_seq_cf_assign(self,node,ctrl_fault:dict):
         left_node = node.lv_node
+
         # visit
         self.compute_out(left_node)
+
         # origin_value get right value result
         self.prop_sel_fault()
 
@@ -247,14 +249,38 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # compute for control signal value
         value = self.compute_ctrl(node)
 
+        # get ctrl fault
+        # TODO
+
         # execute the triggered block
         if "1" in value:
-            self.exec_seq(node.true_node,{})
+            self.exec_seq(node.true_node,ctrl_fault)
+            if node.false_node == None:
+                pass
+            else:
+                self.exec_seq_false(node.false_node,ctrl_fault)
+        else:
+            self.exec_seq_false(node.true_node,ctrl_fault)
+            if node.false_node == None:
+                pass
+            else:
+                self.exec_seq(node.false_node,ctrl_fault)
+
+    def exec_seq_false_if(self,node,ctrl_fault:dict):
+        # compute for control signal value
+        value = self.compute_ctrl(node)
+
+        # get ctrl fault
+        # TODO
+
+        # execute the triggered block
+        if "1" in value:
+            self.exec_seq_false(node.true_node,ctrl_fault)
         else:
             if node.false_node == None:
                 pass
             else:
-                self.exec_seq(node.false_node,{})
+                self.exec_seq_false(node.false_node,ctrl_fault)
 
     def exec_comb_if(self,node,ctrl_fault:dict):
         # compute for control signal value
@@ -268,6 +294,22 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 pass
             else:
                 self.exec_comb(node.false_node, ctrl_fault)
+
+    def exec_comb_false_if(self,node,ctrl_fault:dict):
+        # compute for control signal value
+        value = self.compute_ctrl(node)
+
+        # get ctrl fault
+        # TODO
+
+        # execute the triggered block
+        if "1" in value:
+            self.exec_comb_false(node.true_node,ctrl_fault)
+        else:
+            if node.false_node == None:
+                pass
+            else:
+                self.exec_comb_false(node.false_node,ctrl_fault)
     #----------------------------------------------
     #   Execute CASE Node
     def exec_seq_case(self,node,ctrl_fault:dict):
@@ -279,9 +321,13 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.prep_seq_caseitem(child)
 
         # execute the triggered block
+        case_triggered_flag = False
         for child in node.caseitems:
-            if self.exec_seq_caseitem(child,value):
-                break
+            if !case_triggered_flag:
+                if self.exec_seq_caseitem(child,value):
+                    break
+            else:
+
 
     def exec_comb_case(self,node,ctrl_fault:dict):
         # compute for control signal value
@@ -301,6 +347,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
         for cond in node.conditions:
             self.compute_in(cond)
 
+    def prep_seq_caseitem(self,node):
+        # prepare the condition signals.
+        for cond in node.conditions:
+            self.compute_in(cond)
 
 
 
@@ -341,7 +391,11 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     def exec_seq_false_block(self,node,ctrl_fault:dict):
         for child in node.children:
-            self.exec_comb(child,ctrl_fault)
+            self.exec_seq_false(child,ctrl_fault)
+
+    def exec_comb_false_block(self,node,ctrl_fault:dict):
+        for child in node.children:
+            self.exec_comb_false(child,ctrl_fault)
     #------------------------------------------------------------------------------
 
 
