@@ -84,9 +84,11 @@ class AstConstructAddVar(AstConstructBase):
             self.my_ast._map__name_2_varnode[name] = new_var_node
             if node.attrib["sig_type"] == "register":
                 self.my_ast.register_append(new_var_node)
+                self.my_ast.observe_point_append(new_var_node)
             if "dir" in node.attrib and node.attrib["dir"] == "output":
                 if node.attrib["sig_type"] == "wire":
                     self.my_ast.output_wire_append(new_var_node)
+                    self.my_ast.observe_point_append(new_var_node)
                 self.my_ast.output_append(new_var_node)
 
         return new_var_node

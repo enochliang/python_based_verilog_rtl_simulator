@@ -122,9 +122,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
         self.assign_value(left_node, value, width, 0)
 
         # propagate fault to target signal
-        target_node = self.get_target_lv(left_node)
-        self.assign_data_fault(target_node)
-        self.append_ctrl_fault(target_node)
+        target_node = self.get_target_node(left_node)
+        data_flist = right_node.fault_list
+        self.assign_data_fault(target_node,data_flist)
+        #self.append_ctrl_fault(target_node)
 
         # selectional control fault
         self.prop_sel_fault(left_node)
@@ -146,12 +147,13 @@ class FaultSimulatorExecute(SimulatorPrepare):
         self.assign_value(left_node, value, width, 0)
 
         # propagate fault to target signal
-        target_node = self.get_target_lv(left_node)
-        self.assign_data_fault(target_node)
-        self.append_ctrl_fault(target_node)
+        target_node = self.get_target_node(left_node)
+        data_flist = right_node.fault_list
+        self.assign_data_fault(target_node,data_flist)
+        #self.append_ctrl_fault(target_node)
 
         # selectional control fault
-        self.prop_sel_fault(left_node)
+        #self.prop_sel_fault(left_node)
 
     def exec_seq_cf_assign(self,node,ctrl_fault:dict):
         left_node = node.lv_node
@@ -201,6 +203,8 @@ class FaultSimulatorExecute(SimulatorPrepare):
         else:
             raise SimulationError(f"Unknown signal node to assign: tag = {node.tag}.",5)
 
+    def assign_data_fault(self,node,flist):
+        node.fault_list = flist
 
     #--------------------------------------------------------------------------------------
     # Branches in rtl simulation
@@ -214,12 +218,11 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     # Execute IF Node
     def exec_seq_if(self,node,ctrl_fault:dict):
+        # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
-
         # get ctrl fault
         # TODO
-
         # execute the triggered block
         if "1" in value:
             self.exec_seq(node.true_node,ctrl_fault)
@@ -235,12 +238,11 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 self.exec_seq(node.false_node,ctrl_fault)
 
     def exec_seq_false_if(self,node,ctrl_fault:dict):
+        # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
-
         # get ctrl fault
         # TODO
-
         # execute the triggered block
         if "1" in value:
             self.exec_seq_false(node.true_node,ctrl_fault)
@@ -251,25 +253,29 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 self.exec_seq_false(node.false_node,ctrl_fault)
 
     def exec_comb_if(self,node,ctrl_fault:dict):
+        # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
-
-        # execute the triggered block
+        # execute the triggered block, and then execute the false block
         if "1" in value:
             self.exec_comb(node.true_node, ctrl_fault)
+            if node.false_node == None:
+                pass
+            else:
+                self.exec_comb_false(node.false_node, ctrl_fault)
         else:
             if node.false_node == None:
                 pass
             else:
                 self.exec_comb(node.false_node, ctrl_fault)
+            self.exec_comb_false(node.true_node, ctrl_fault)
 
     def exec_comb_false_if(self,node,ctrl_fault:dict):
+        # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
-
         # get ctrl fault
         # TODO
-
         # execute the triggered block
         if "1" in value:
             self.exec_comb_false(node.true_node,ctrl_fault)
@@ -282,9 +288,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
     #----------------------------------------------
     # Execute CASE Node
     def exec_seq_case(self,node,ctrl_fault:dict):
+        # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
-
         # compute for condition signal values
         caseitem_trig_list = []
         trigger_flag = False
@@ -295,22 +301,20 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 caseitem_trig_list.append((True,child))
             else:
                 caseitem_trig_list.append((False,child))
-
         # Execution:
         # execute the triggered block first
         for trigger, child in caseitem_trig_list:
             if trigger:
-                self.exec_comb_caseitem(child,ctrl_fault)
-
+                self.exec_seq_caseitem(child,ctrl_fault)
         # execute the false blocks
         for trigger, child in caseitem_trig_list:
             if not trigger:
-                self.exec_comb_false_caseitem(child,ctrl_fault)
+                self.exec_seq_false_caseitem(child,ctrl_fault)
 
     def exec_seq_false_case(self,node,ctrl_fault:dict):
+        # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
-
         # compute for condition signal values
         caseitem_trig_list = []
         trigger_flag = False
@@ -321,19 +325,17 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 caseitem_trig_list.append((True,child))
             else:
                 caseitem_trig_list.append((False,child))
-
-        # Execution
+        # Execution:
         # only execute the triggered block
         for trigger, child in caseitem_trig_list:
             if trigger:
-                self.exec_seq_caseitem(child,ctrl_fault)
+                self.exec_seq_false_caseitem(child,ctrl_fault)
                 break
 
 
     def exec_comb_case(self,node,ctrl_fault:dict):
         # compute for control signal value
         value = self.compute_ctrl(node)
-
         # compute for condition signal values
         caseitem_trig_list = []
         trigger_flag = False
@@ -344,13 +346,11 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 caseitem_trig_list.append((True,child))
             else:
                 caseitem_trig_list.append((False,child))
-
         # Execution:
         # execute the triggered block first
         for trigger, child in caseitem_trig_list:
             if trigger:
                 self.exec_comb_caseitem(child,ctrl_fault)
-
         # execute the false blocks
         for trigger, child in caseitem_trig_list:
             if not trigger:
@@ -359,7 +359,6 @@ class FaultSimulatorExecute(SimulatorPrepare):
     def exec_comb_false_case(self,node,ctrl_fault:dict):
         # compute for control signal value
         value = self.compute_ctrl(node)
-
         # compute for condition signal values
         caseitem_trig_list = []
         trigger_flag = False
@@ -370,12 +369,11 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 caseitem_trig_list.append((True,child))
             else:
                 caseitem_trig_list.append((False,child))
-
         # Execution
         # only execute the triggered block
         for trigger, child in caseitem_trig_list:
             if trigger:
-                self.exec_comb_caseitem(child,ctrl_fault)
+                self.exec_comb_false_caseitem(child,ctrl_fault)
                 break
 
     #----------------------------------------------
@@ -386,10 +384,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.compute_in(cond)
             if not trigger_flag and cond.value == ctrl_value:
                 trigger_flag = True
-
+        # trigger if the caseitem is default.
         if len(node.conditions) == 0:
             trigger_flag = True
-
         return trigger_flag
 
     def prep_seq_caseitem(self,node,ctrl_value):
@@ -399,37 +396,27 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.compute_in(cond)
             if not trigger_flag and cond.value == ctrl_value:
                 trigger_flag = True
-
+        # trigger if the caseitem is default.
         if len(node.conditions) == 0:
             trigger_flag = True
-
         return trigger_flag
 
     #----------------------------------------------
-    def trigger_condition(self,node,ctrl_value:str):
-        flag = False
-        for cond in node.conditions:
-            if cond.value == ctrl_value:
-                flag = True
-                break
-        return (flag or (node.conditions == []))
+    def exec_seq_caseitem(self,node,ctrl_fault:dict):
+        for child in node.other_children:
+            self.exec_seq(child,ctrl_fault)
 
+    def exec_seq_false_caseitem(self,node,ctrl_fault:dict):
+        for child in node.other_children:
+            self.exec_seq_false(child,ctrl_fault)
 
-    def exec_seq_caseitem(self,node,ctrl_value:str):
-        flag = self.trigger_condition(node,ctrl_value)
-        if flag:
-            for child in node.other_children:
-                self.exec_seq(child,{})
-        return flag
+    def exec_comb_caseitem(self,node,ctrl_fault:dict):
+        for child in node.other_children:
+            self.exec_comb(child,ctrl_fault)
 
-    def exec_comb_caseitem(self,node,ctrl_value:str):
-        flag = self.trigger_condition(node,ctrl_value)
-        if flag:
-            for child in node.other_children:
-                self.exec_comb(child,{})
-        return flag
-    #------------------------------------------------------------------------------
-
+    def exec_comb_false_caseitem(self,node,ctrl_fault:dict):
+        for child in node.other_children:
+            self.exec_comb_false(child,ctrl_fault)
 
     #------------------------------------------------------------------------------
     # execution of code block
@@ -448,9 +435,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
     def exec_comb_false_block(self,node,ctrl_fault:dict):
         for child in node.children:
             self.exec_comb_false(child,ctrl_fault)
+
+
     #------------------------------------------------------------------------------
-
-
     # fault list propagation rtl simulation
     # rtl computation
     def compute_in(self,node) -> None:
@@ -517,6 +504,8 @@ class FaultSimulatorExecute(SimulatorPrepare):
         self.check_width(node,result)
         node.value = result
 
+
+    #-----------------------------------------------------
     # checking function
     def check_width(self,node,result):
         #if result is not None:
@@ -530,37 +519,103 @@ class FaultSimulatorExecute(SimulatorPrepare):
         return len(s) == l
 
 
-    #------------------------------------------------------
+    #-----------------------------------------------------
     # Data Write-event fault propagation
+    def merge_flist(self, src_flist, target_flist):
+        for fault in src_flist:
+            prob = src_flist[fault]
+            if fault[1] == "stay":
+                n_fault = (fault[0],"data")
+            else:
+                n_fault = fault
+            if fault in target_flist:
+                if prob > target_flist[n_fault]:
+                    target_flist[n_fault] = prob
+            else:
+                target_flist[n_fault] = prob
+
+    def merge_prob_flist(self, src_flist, target_flist, scaler:float):
+        for fault in src_flist:
+            prob = src_flist[fault]
+            if fault[1] == "stay":
+                n_fault = (fault[0],"data")
+            else:
+                n_fault = fault
+            if fault in target_flist:
+                if prob*scaler > target_flist[n_fault]:
+                    target_flist[n_fault] = prob
+            else:
+                target_flist[n_fault] = prob*scaler
+
     def prop_in_fault(self,node):
         for child in node.children:
             self.prop_in_fault(child)
-
+        new_flist = {}
         if node.tag == "varref":
-            return
+            src_sig_flist = node.node.fault_list
+            self.merge_flist(src_sig_flist, new_flist)
         elif node.tag == "arraysel":
-            new_fault_list = {}
-            
-
-
-            return
+            src_sig_flist = node.node.fault_list
+            sel_sig_flist = node.children[1].node.fault_list
+            self.merge_flist(src_sig_flist, new_flist)
+            self.merge_flist(sel_sig_flist, new_flist)
         elif node.tag == "sel":
-            result = val_sel(node)
+            src_sig_flist = node.children[0].node.fault_list
+            bitsel_sig_flist = node.children[1].node.fault_list
+            width_sig_flist = node.children[2].node.fault_list
+            self.merge_flist(src_sig_flist, new_flist)
+            self.merge_flist(bitsel_sig_flist, new_flist)
+            self.merge_flist(width_sig_flist, new_flist)
         elif node.tag == "cond":
-            result = val_cond(node)
+            if node.children[0].value == "x":
+                pass
+            elif node.children[0].value == "1":
+                src_sig_flist = node.children[1].node.fault_list
+                self.merge_flist(src_sig_flist, new_flist)
+            else:
+                src_sig_flist = node.children[2].node.fault_list
+                self.merge_flist(src_sig_flist, new_flist)
+            ctrl_sig_flist = node.children[0].node.fault_list
+            self.merge_flist(ctrl_sig_flist, new_flist)
         elif node.tag == "const":
-            return
+            pass
         elif node.tag in self.op__2_port:
             l_prob, r_prob = prob_2_op(node)
+            r_flist = node.children[0].node.fault_list
+            l_flist = node.children[1].node.fault_list
+            self.merge_prob_flist(r_flist,new_flist,r_prob)
+            self.merge_prob_flist(l_flist,new_flist,l_prob)
         elif node.tag in self.op__1_port:
             prob = prob_1_op(node)
+            i_flist = node.children[0].node.fault_list
+            self.merge_prob_flist(i_flist,new_flist,prob)
         else:
             raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",3)
+        node.fault_list = new_flist
 
+
+    #----------------------------------------------------
+    def prop_seq_sel_fault(self,node):
+        pass
+
+    def prop_comb_sel_fault(self,node):
+        pass
+
+    #----------------------------------------------------
+    def fault_write(self,node):
+        pass
+
+    def fault_append(self,node):
+        pass
+    
     def fault_prop(self, target_fault_list ):
         pass
     
-
+    def get_target_node(self,node):
+        if node.tag == "sel":
+            return node.children[0].node
+        else:
+            node.node
 
 
 
@@ -568,6 +623,7 @@ class FaultSimulator(FaultSimulatorExecute):
     def __init__(self,ast):
         FaultSimulatorExecute.__init__(self,ast)
         self.dumper = AstDumpSimulatorSigList(self.ast)
+        self.rw_table = []
 
     def propagate(self):
         for subcircuit_id in self.my_ast.ordered_subcircuit_id_head:
@@ -577,15 +633,28 @@ class FaultSimulator(FaultSimulatorExecute):
             entry_node = self.my_ast.subtreeroot_node(subcircuit_id)
             self.exec_seq_entry(entry_node)
 
+    def observe_fault_effect(self):
+        rw_events = {}
+        for obs in self.my_ast.observe_point_list:
+            dst_reg_name = obs.name
+            rw_event = {}
+
+
+        pass
+
     def simulate_1_cyc(self,cyc:int):
         self.load_logic_value(cyc)
         self.init_fault_list()
         #self.my_ast.show_register_fault_list()
         self.propagate()
+        self.observe_fault_effect()
 
     def simulate(self):
         self.preprocess()
-        for cyc in range(500,485080):
+        start_cyc = 500
+        for cyc in range(start_cyc):
+            self.rw_table.append(None)
+        for cyc in range(start_cyc,485080):
             # simulation
             self.simulate_1_cyc(cyc)
 

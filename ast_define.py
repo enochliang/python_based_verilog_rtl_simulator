@@ -12,6 +12,7 @@ class Verilog_AST:
         self.register_list = []
         self.output_wire_list = []
         self.output_list = []
+        self.observe_point_list = []
 
     def _add_root(self):
         root = Verilog_AST_Node()
@@ -37,6 +38,9 @@ class Verilog_AST:
 
     def register_append(self,node):
         self.register_list.append(node)
+
+    def observe_point_append(self,node):
+        self.observe_point_list.append(node)
 
     def output_append(self,node):
         self.output_list.append(node)
