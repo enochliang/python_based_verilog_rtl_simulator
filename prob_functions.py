@@ -61,8 +61,10 @@ def prob_eq(l_value,r_value,result):
     if result == "1": # if is equal
         return 1.0, 1.0
     else:
-        l_xor_r = val_xor(l_value,r_value)
+        l_xor_r = val_xor(l_value,r_value,len(r_value))
         diff_bit_num = l_xor_r.count("1")
+        if diff_bit_num == 0:
+            return 1.0, 1.0
         if diff_bit_num == 1:
             return 1.0/len(l_xor_r), 1.0/len(l_xor_r)
         else: #TODO
@@ -84,13 +86,15 @@ def prob_logand(l_value,r_value,result):
     if result == "1":
         return 1.0, 1.0
     else:
-        pass
+        #TODO
+        return 1.0, 1.0
 
 def prob_logor(l_value,r_value,result):
     if result == "0":
         return 1.0, 1.0
     else:
-        pass
+        #TODO
+        return 1.0, 1.0
 
 
 
@@ -124,14 +128,19 @@ def prob_2_op(node):
         return prob_neq(l_value,r_value,result)
     elif node.tag == "gt":
         #return prob_gt(l_value,r_value,result)
+        return 1.0, 1.0
     elif node.tag == "gte":
         #return prob_gte(l_value,r_value,result)
+        return 1.0, 1.0
     elif node.tag == "lte":
         #return prob_lte(l_value,r_value,result)
+        return 1.0, 1.0
     elif node.tag == "lt":
         #return prob_lt(l_value,r_value,result)
+        return 1.0, 1.0
     elif node.tag == "lts":
         #return prob_lts(l_value,r_value,result)
+        return 1.0, 1.0
     elif node.tag == "concat":
         return 1.0, 1.0
     elif node.tag == "logand":
@@ -153,9 +162,11 @@ def prob_1_op(node):
     elif node.tag == "extend":
         return 1.0
     elif node.tag == "redor":
-        return prob_redor(i_value,result)
+        #return prob_redor(i_value,result)
+        return 1.0
     elif node.tag == "redand":
-        return prob_redand(i_value,result)
+        #return prob_redand(i_value,result)
+        return 1.0
     elif node.tag == "negate":
         return 1.0
     else:

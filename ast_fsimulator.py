@@ -1,4 +1,5 @@
 from ast_sim_prepare import *
+from prob_functions import *
 
 class FaultSimulatorExecute(SimulatorPrepare):
     """
@@ -68,7 +69,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
     # RTL simulation functions
     def exec_seq(self,node,ctrl_fault:dict):
         if "assign" in node.tag:
-            self.exec_assign(node,ctrl_fault)
+            self.exec_seq_assign(node,ctrl_fault)
         elif node.tag == "if":
             self.exec_seq_if(node,ctrl_fault)
         elif node.tag == "case":
@@ -77,22 +78,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.exec_seq_block(node,ctrl_fault)
         else:
             raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
-
-    def exec_comb(self,node,ctrl_fault:dict):
-        if "assign" in node.tag:
-            self.exec_assign(node,ctrl_fault)
-        elif node.tag == "if":
-            self.exec_comb_if(node,ctrl_fault)
-        elif node.tag == "case":
-            self.exec_comb_case(node,ctrl_fault)
-        elif node.tag == "begin" or node.tag == "always":
-            self.exec_comb_block(node,ctrl_fault)
-        else:
-            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
-
     def exec_seq_false(self,node,ctrl_fault:dict):
         if "assign" in node.tag:
-            self.exec_seq_cf_assign(node,ctrl_fault)
+            self.exec_seq_false_assign(node,ctrl_fault)
         elif node.tag == "if":
             self.exec_seq_false_if(node,ctrl_fault)
         elif node.tag == "case":
@@ -101,6 +89,41 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.exec_seq_false_block(node,ctrl_fault)
         else:
             raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
+
+    def exec_comb(self,node,ctrl_fault:dict):
+        if "assign" in node.tag:
+            self.exec_comb_assign(node,ctrl_fault)
+        elif node.tag == "if":
+            self.exec_comb_if(node,ctrl_fault)
+        elif node.tag == "case":
+            self.exec_comb_case(node,ctrl_fault)
+        elif node.tag == "begin" or node.tag == "always":
+            self.exec_comb_block(node,ctrl_fault)
+        else:
+            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
+    def exec_comb_false(self,node,ctrl_fault:dict):
+        if "assign" in node.tag:
+            self.exec_comb_false_assign(node,ctrl_fault)
+        elif node.tag == "if":
+            self.exec_comb_false_if(node,ctrl_fault)
+        elif node.tag == "case":
+            self.exec_comb_false_case(node,ctrl_fault)
+        elif node.tag == "begin" or node.tag == "always":
+            self.exec_comb_false_block(node,ctrl_fault)
+        else:
+            raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
+
+    #def exec_seq_false(self,node,ctrl_fault:dict):
+    #    if "assign" in node.tag:
+    #        self.exec_seq_cf_assign(node,ctrl_fault)
+    #    elif node.tag == "if":
+    #        self.exec_seq_false_if(node,ctrl_fault)
+    #    elif node.tag == "case":
+    #        self.exec_seq_false_case(node,ctrl_fault)
+    #    elif node.tag == "begin" or node.tag == "always":
+    #        self.exec_seq_false_block(node,ctrl_fault)
+    #    else:
+    #        raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
 
 
     #----------------------------------------------------------------------------------
@@ -128,7 +151,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
         #self.append_ctrl_fault(target_node)
 
         # selectional control fault
-        self.prop_sel_fault(left_node)
+        self.prop_seq_sel_fault(left_node)
+
+    def exec_seq_false_assign(self,node,ctrl_fault:dict):
+        pass
 
     def exec_comb_assign(self,node,ctrl_fault:dict):
         right_node = node.rv_node
@@ -153,25 +179,28 @@ class FaultSimulatorExecute(SimulatorPrepare):
         #self.append_ctrl_fault(target_node)
 
         # selectional control fault
-        #self.prop_sel_fault(left_node)
+        self.prop_comb_sel_fault(left_node)
 
-    def exec_seq_cf_assign(self,node,ctrl_fault:dict):
-        left_node = node.lv_node
+    def exec_comb_false_assign(self,node,ctrl_fault:dict):
+        pass
 
-        # visit
-        self.compute_out(left_node)
+    #def exec_seq_cf_assign(self,node,ctrl_fault:dict):
+    #    left_node = node.lv_node
 
-        # origin_value get right value result
-        self.prop_sel_fault()
+    #    # visit
+    #    self.compute_out(left_node)
 
-    def exec_comb_cf_assign(self,node,ctrl_fault:dict):
-        left_node = node.lv_node
+    #    # origin_value get right value result
+    #    self.prop_sel_fault()
 
-        # visit
-        self.compute_out(left_node)
+    #def exec_comb_cf_assign(self,node,ctrl_fault:dict):
+    #    left_node = node.lv_node
 
-        # origin_value get right value result
-        self.prop_sel_fault()
+    #    # visit
+    #    self.compute_out(left_node)
+
+    #    # origin_value get right value result
+    #    self.prop_sel_fault()
 
 
     #--------------------------------------------------------------------------------
@@ -209,7 +238,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
     #--------------------------------------------------------------------------------------
     # Branches in rtl simulation
     #----------------------------------------------
-    def compute_ctrl(branch_node):
+    def compute_ctrl(self,branch_node):
         # compute for control signal value
         ctrl_node = branch_node.ctrl_node
         self.compute_in(ctrl_node)
@@ -295,7 +324,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         caseitem_trig_list = []
         trigger_flag = False
         for child in node.caseitems:
-            flag = self.prep_seq_caseitem(child)
+            flag = self.prep_seq_caseitem(child,value)
             if flag and not trigger_flag:
                 trigger_flag = flag
                 caseitem_trig_list.append((True,child))
@@ -319,7 +348,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         caseitem_trig_list = []
         trigger_flag = False
         for child in node.caseitems:
-            flag = self.prep_seq_caseitem(child,ctrl_value)
+            flag = self.prep_seq_caseitem(child,value)
             if flag and not trigger_flag:
                 trigger_flag = flag
                 caseitem_trig_list.append((True,child))
@@ -340,7 +369,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         caseitem_trig_list = []
         trigger_flag = False
         for child in node.caseitems:
-            flag = self.prep_comb_caseitem(child)
+            flag = self.prep_comb_caseitem(child,value)
             if flag and not trigger_flag:
                 trigger_flag = flag
                 caseitem_trig_list.append((True,child))
@@ -363,7 +392,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         caseitem_trig_list = []
         trigger_flag = False
         for child in node.caseitems:
-            flag = self.prep_comb_caseitem(child)
+            flag = self.prep_comb_caseitem(child,value)
             if flag and not trigger_flag:
                 trigger_flag = flag
                 caseitem_trig_list.append((True,child))
@@ -615,7 +644,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         if node.tag == "sel":
             return node.children[0].node
         else:
-            node.node
+            return node.node
 
 
 
@@ -637,10 +666,14 @@ class FaultSimulator(FaultSimulatorExecute):
         rw_events = {}
         for obs in self.my_ast.observe_point_list:
             dst_reg_name = obs.name
-            rw_event = {}
-
-
-        pass
+            for fault, f_type in obs.fault_list:
+                if fault not in rw_events:
+                    prob = obs.fault_list[(fault, f_type)]
+                    rw_events[fault] = [(dst_reg_name,f_type,prob)]
+                else:
+                    prob = obs.fault_list[(fault, f_type)]
+                    rw_events[fault].append((dst_reg_name,f_type,prob))
+        print(rw_events)
 
     def simulate_1_cyc(self,cyc:int):
         self.load_logic_value(cyc)
@@ -651,10 +684,10 @@ class FaultSimulator(FaultSimulatorExecute):
 
     def simulate(self):
         self.preprocess()
-        start_cyc = 500
+        start_cyc = 5000
         for cyc in range(start_cyc):
             self.rw_table.append(None)
-        for cyc in range(start_cyc,485080):
+        for cyc in range(start_cyc,start_cyc+1):
             # simulation
             self.simulate_1_cyc(cyc)
 
@@ -691,6 +724,6 @@ if __name__ == "__main__":
         ast_file = args.file
         ast = Verilator_AST_Tree(ast_file)
 
-        ast_sim = Simulator(ast)
+        ast_sim = FaultSimulator(ast)
         ast_sim.simulate()
 
