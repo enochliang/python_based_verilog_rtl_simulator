@@ -150,14 +150,10 @@ class GenFaultList:
         #pprint.pp(self.all_fault_list)
 
 if __name__ == "__main__":
-    #ast_file = "./ast/Vsha1.xml"
-    #ast = Verilator_AST_Tree(ast_file)
-    #parser = AST_Parser(ast)
-    
     #dumper = DumpSigList(ast)
     #dumper.dump_sig_list()
     
-    f = open("graph_sig_dict.json","r")
+    f = open("simulator_sig_dict.json","r")
     sig_dict = json.load(f)
     #f.close()
     #fl = GenFaultList(1037,sig_dict)

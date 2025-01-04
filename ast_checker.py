@@ -384,7 +384,7 @@ class AstChecker:
         self._check_assign_no_concat_lv()
         self._check_comb_always_only_one_lv()
         self._check_ff_always_no_blking_assign()
-        self._check_seq_always_only_one_lv()
+        #self._check_seq_always_only_one_lv()
         self._check_initial_simple()
         self._check_assign_no_param()
         self._check_param_not_in_circuit()

@@ -623,7 +623,6 @@ class FaultSimulatorExecute(SimulatorPrepare):
 class Simulator(SimulatorExecute):
     def __init__(self,ast):
         SimulatorExecute.__init__(self,ast)
-        self.dumper = AstDumpSimulatorSigList(self.ast)
 
     def propagate(self):
         for subcircuit_id in self.my_ast.ordered_subcircuit_id_head:
@@ -646,14 +645,14 @@ class Simulator(SimulatorExecute):
             self.simulate_1_cyc(cyc)
 
     def preprocess(self):
-        self.dumper.dump_sig_dict()
+        self.sig_dumper.dump_sig_dict()
         self.load_ordered_varname()
 
     def process(self):
         self.preprocess()
         self.simulate_1_cyc(8517)
         #self.ast_dumper.dump()
-        #self.dumper.dump_sig_dict()
+        #self.sig_dumper.dump_sig_dict()
         #self.load_ordered_varname()
         #self.my_ast.show_var_value()
         # simulation

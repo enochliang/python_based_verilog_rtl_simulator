@@ -1,6 +1,8 @@
 from ast_sim_prepare import *
 from prob_functions import *
 
+import pandas as pd
+
 class FaultSimulatorExecute(SimulatorPrepare):
     """
     A simulator
@@ -651,8 +653,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
 class FaultSimulator(FaultSimulatorExecute):
     def __init__(self,ast):
         FaultSimulatorExecute.__init__(self,ast)
-        self.dumper = AstDumpSimulatorSigList(self.ast)
-        self.rw_table = []
+
+        # RW table dictionary
+        self.rw_table = {"cycle":[],"rw_event":[]}
 
     def propagate(self):
         for subcircuit_id in self.my_ast.ordered_subcircuit_id_head:
@@ -663,6 +666,8 @@ class FaultSimulator(FaultSimulatorExecute):
             self.exec_seq_entry(entry_node)
 
     def observe_fault_effect(self):
+        cur_rw_events = []
+
         rw_events = {}
         for obs in self.my_ast.observe_point_list:
             dst_reg_name = obs.name
@@ -673,37 +678,51 @@ class FaultSimulator(FaultSimulatorExecute):
                 else:
                     prob = obs.fault_list[(fault, f_type)]
                     rw_events[fault].append((dst_reg_name,f_type,prob))
-        print(rw_events)
+        
+        for r_event in rw_events:
+            event = {"r":r_event, "w":[],"ctrl":[],"stay":[]}
+            for w_event in rw_events[r_event]:
+                dst_reg_name, f_type, prob = w_event
+                if f_type == "data":
+                    event["w"].append((dst_reg_name, prob))
+                elif f_type == "ctrl":
+                    event["ctrl"].append((dst_reg_name, prob))
+                elif f_type == "stay":
+                    event["stay"].append((dst_reg_name, prob))
+                else:
+                    print("Undefined W-event")
+            cur_rw_events.append(event)
+        return cur_rw_events
+
+
+        #print(rw_events)
 
     def simulate_1_cyc(self,cyc:int):
         self.load_logic_value(cyc)
         self.init_fault_list()
         #self.my_ast.show_register_fault_list()
         self.propagate()
-        self.observe_fault_effect()
+        cur_rw_events = self.observe_fault_effect()
+
+        self.rw_table["cycle"].append(cyc)
+        self.rw_table["rw_event"].append(cur_rw_events)
+
+    def dump_rw_table(self):
+        df = pd.DataFrame(self.rw_table)
+        df.to_csv("prob_rw_table.csv")
+
 
     def simulate(self):
-        self.preprocess()
+        self.sig_dumper.dump_sig_dict()
+        self.wrapper_sig_dumper.dump_sig_dict()
+        self.load_ordered_varname()
+
         start_cyc = 5000
-        for cyc in range(start_cyc):
-            self.rw_table.append(None)
-        for cyc in range(start_cyc,start_cyc+1):
+        for cyc in range(start_cyc,start_cyc+100):
             # simulation
             self.simulate_1_cyc(cyc)
 
-    def preprocess(self):
-        self.dumper.dump_sig_dict()
-        self.load_ordered_varname()
-
-    def process(self):
-        self.preprocess()
-        self.simulate_1_cyc(8517)
-        #self.ast_dumper.dump()
-        #self.dumper.dump_sig_dict()
-        #self.load_ordered_varname()
-        #self.my_ast.show_var_value()
-        # simulation
-        #self.simulate_1_cyc(8517)
+        self.dump_rw_table()
 
 
 if __name__ == "__main__":

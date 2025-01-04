@@ -21,8 +21,13 @@ class SimulatorPrepare(AstNodeClassify):
         self.ast_duplicator.duplicate()
         self.my_ast = self.ast_duplicator.my_ast
 
+        # dump wrapper sig list
+        self.wrapper_sig_dumper = AstDumpWrapperSigList(self.ast)
+
         # dump simulator sig list
         self.sig_dumper = AstDumpSimulatorSigList(self.ast)
+
+        # dump ast to xml file
         self.ast_dumper = AstDump(self.ast)
        
         # TODO

@@ -189,16 +189,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="A simple example of argparse usage.")
 
     # Step 2: Define arguments
-    parser.add_argument("ast", type=str, help="AST path")                  # Positional argument
+    parser.add_argument('--func',action='store_true')
+    parser.add_argument("-f", "--file", type=str, help="AST path")                  # Positional argument
 
     # Step 3: Parse the arguments
     args = parser.parse_args()
 
-    ast_file = args.ast
-    ast = Verilator_AST_Tree(ast_file)
+    if args.func:
+        pprint.pp(list(Simulator.__dict__.keys()))
 
+    if args.file:
+        ast_file = args.file
+        ast = Verilator_AST_Tree(ast_file)
 
-    ast_scheduler = AstSchedule(ast)
-    ast_scheduler.output()
+        ast_scheduler = AstSchedule(ast)
+        ast_scheduler.schedule()
 
 
