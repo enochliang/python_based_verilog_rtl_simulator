@@ -16,22 +16,38 @@ class AstDump:
         print("  Dumped <new_ast_dump.xml>!")
 
 
-class AstDumpWrapperSigList:
+class AstDumpFsimSigTable:
     def __init__(self,ast):
         self.ast = ast
-        self.analyzer = AstAnalyzer(self.ast)
-
-    def get_dict__signal_table(self):
-        self.signal_table = self.analyzer.get_dict__signal_table()
+        self.signal_table = {"input":{},"ff":{},"output":{}}
 
     def dump_sig_dict(self):
-        self.get_dict__signal_table()
+        clk_name = "clk"
+        optimize_sig = "__Vdfg"
+        for var in self.ast.findall(".//var"):
+            width = int(var.attrib["width"])
+            if optimize_sig in var.attrib["name"]:
+                continue
+            elif clk_name == var.attrib["name"]:
+                continue
+            elif var.attrib["sig_type"] == "register":
+                self.signal_table["ff"][var.attrib["name"]] = width
+            elif "dir" in var.attrib:
+                if var.attrib["dir"] == "input":
+                    self.signal_table["input"][var.attrib["name"]] = width
+                elif var.attrib["dir"] == "output":
+                    self.signal_table["output"][var.attrib["name"]] = width
+                
         print("Dumped Signal Table.")
-        print(self.signal_table)
+        sig_table_dir = "./sig_list/fsim_sig_table.json"
+        f = open(sig_table_dir,"w")
+        f.write(json.dumps(self.signal_table, indent=4))
+        f.close()
+        print(f"  - dumped file = {sig_table_dir}")
 
 
 
-class AstDumpSimulatorSigList:
+class AstDumpPySimSigTable:
     def __init__(self,ast):
         self.ast = ast
         self._dict__varname_2_width = {}
@@ -64,10 +80,12 @@ class AstDumpSimulatorSigList:
             if clk_name == varname:
                 continue
             varname_2_width[varname] = self._dict__varname_2_width[varname]
-        f = open("./sig_list/simulator_sig_dict.json","w")
+
+        sig_table_dir = "./sig_list/pysim_sig_table.json"
+        f = open(sig_table_dir,"w")
         f.write(json.dumps(varname_2_width, indent=4))
         f.close()
-        print("  - dumped file = ./sig_list/simulator_sig_dict.json")
+        print(f"  - dumped file = {sig_table_dir}")
 
     def process(self):
         self.ast_process()

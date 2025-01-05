@@ -4,7 +4,7 @@ from ast_schedule import AstSchedulePreprocess
 from lxml import etree
 import json
 
-class GenSimFFWrapper:
+class GenPySimFFWrapper:
     def __init__(self,sig_dict):
         self.sig_dict = sig_dict
         self.tb_clk_name = "clk"
@@ -153,12 +153,12 @@ if __name__ == "__main__":
     #dumper = DumpSigList(ast)
     #dumper.dump_sig_list()
     
-    f = open("simulator_sig_dict.json","r")
+    f = open("sig_list/pysim_sig_table.json","r")
     sig_dict = json.load(f)
     #f.close()
     #fl = GenFaultList(1037,sig_dict)
     #fl.get_fault_list()
-    gen = GenSimFFWrapper(sig_dict)
+    gen = GenPySimFFWrapper(sig_dict)
     l = gen.gen_cnt()
     gen.print_strs(l)
     l = gen.gen_task()

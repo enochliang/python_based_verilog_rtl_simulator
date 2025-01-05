@@ -327,6 +327,7 @@ def get_dict__signal_table(ast):
         input_var_dict[var] = left - right + 1
     ff_var_dict = {}
     for var in ff_var_list:
+        print(var)
         dtype_id = ast.find(f".//var[@name='{var}']").attrib["dtype_id"]
         dtype = ast.find(f".//basicdtype[@id='{dtype_id}']")
         if "left" in dtype.attrib:

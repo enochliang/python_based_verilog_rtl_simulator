@@ -713,9 +713,7 @@ class FaultSimulator(FaultSimulatorExecute):
 
 
     def simulate(self):
-        self.sig_dumper.dump_sig_dict()
-        self.wrapper_sig_dumper.dump_sig_dict()
-        self.load_ordered_varname()
+        self.preprocess()
 
         start_cyc = 5000
         for cyc in range(start_cyc,start_cyc+100):

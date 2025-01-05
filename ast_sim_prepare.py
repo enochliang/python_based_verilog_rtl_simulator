@@ -18,26 +18,34 @@ class SimulatorPrepare(AstNodeClassify):
 
         # duplicate ast -> get self.my_ast
         self.ast_duplicator = AstDuplicate(self.ast)
-        self.ast_duplicator.duplicate()
-        self.my_ast = self.ast_duplicator.my_ast
-
-        # dump wrapper sig list
-        self.wrapper_sig_dumper = AstDumpWrapperSigList(self.ast)
-
-        # dump simulator sig list
-        self.sig_dumper = AstDumpSimulatorSigList(self.ast)
+        self.my_ast = None
 
         # dump ast to xml file
         self.ast_dumper = AstDump(self.ast)
-       
+
+        # dump wrapper sig list
+        self.fsim_sig_dumper = AstDumpFsimSigTable(self.ast)
+
+        # dump simulator sig list
+        self.pysim_sig_dumper = AstDumpPySimSigTable(self.ast)
+
         # TODO
         self.logic_value_file_dir = "../picorv32/pattern/"
         self.logic_value_file_head = "FaultFree_Signal_Value_C"
         self.logic_value_file_tail = ".txt"
 
+    def preprocess(self):
+        self.ast_duplicator.duplicate()
+        self.my_ast = self.ast_duplicator.my_ast
+
+        self.ast_dumper.dump()
+        self.pysim_sig_dumper.dump_sig_dict()
+        self.fsim_sig_dumper.dump_sig_dict()
+        self.load_ordered_varname()
+
     def load_ordered_varname(self):
         self.varname_list = []
-        f = open("./sig_list/simulator_sig_dict.json","r")
+        f = open("./sig_list/pysim_sig_table.json","r")
         for varname in json.load(f).keys():
             self.varname_list.append(varname)
         f.close()
@@ -67,4 +75,25 @@ class SimulatorPrepare(AstNodeClassify):
             fault_name = node.name
             node.fault_list = {(fault_name,"stay"):1.0}
 
+
+if __name__ == "__main__":
+    # Step 1: Create the parser
+    parser = argparse.ArgumentParser(description="A simple example of argparse usage.")
+
+    # Step 2: Define arguments
+    parser.add_argument('--func',action='store_true')
+    parser.add_argument("-f", "--file", type=str, help="AST path")                  # Positional argument
+
+    # Step 3: Parse the arguments
+    args = parser.parse_args()
+
+    if args.func:
+        pprint.pp(list(FaultSimulator.__dict__.keys()))
+
+    if args.file:
+        ast_file = args.file
+        ast = Verilator_AST_Tree(ast_file)
+
+        sim_prep = SimulatorPrepare(ast)
+        sim_prep.preprocess()
 
