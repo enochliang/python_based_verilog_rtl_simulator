@@ -75,6 +75,7 @@ class AstNodeMerger:
             else:
                 signal_buckets[bucket_idx].add(v1)
                 signal_buckets[bucket_idx].add(v2)
+        pprint.pp(signal_buckets)
         for i,s in enumerate(signal_buckets):
             main_signal = [v for v in s if v in all_signal_set][0]
             signal_merge_dict[main_signal] = s

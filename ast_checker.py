@@ -368,6 +368,25 @@ class AstChecker:
                 self._get_loc_info(initial)
                 print("  - [Checker Report] warning: found an <initial/assign> not assigns <varref> with a <const>.")
         print("-"*80)
+
+    def _check_no_output_reg(self):
+        print("[Checker Task] start checking no output reg in circuit.")
+        ff_set = set()
+        for assigndly in self.ast.findall(".//always//assigndly"):
+            lv_node = self.analyzer.get_sig_node(assigndly.getchildren()[1])
+            ff_set.add(lv_node.attrib["name"])
+        
+        flag = False
+        for output_var in self.ast.findall(".//module//var[@dir='output']"):
+            var_name = output_var.attrib["name"]
+            if var_name in ff_set:
+                flag = True
+                print(f"  - [Checker Report] warning: found a output reg, var_name = {var_name}")
+        if not flag:
+            print(f"  - [Checker Report] Pass: no output reg.")
+        print("-"*80)
+
+
             
 
     def check_simple_design(self):
@@ -388,6 +407,7 @@ class AstChecker:
         self._check_initial_simple()
         self._check_assign_no_param()
         self._check_param_not_in_circuit()
+        self._check_no_output_reg()
 
 
 if __name__ == "__main__":

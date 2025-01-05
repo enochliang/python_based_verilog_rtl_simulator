@@ -80,6 +80,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.exec_seq_block(node,ctrl_fault)
         else:
             raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
+
     def exec_seq_false(self,node,ctrl_fault:dict):
         if "assign" in node.tag:
             self.exec_seq_false_assign(node,ctrl_fault)
@@ -694,9 +695,6 @@ class FaultSimulator(FaultSimulatorExecute):
             cur_rw_events.append(event)
         return cur_rw_events
 
-
-        #print(rw_events)
-
     def simulate_1_cyc(self,cyc:int):
         self.load_logic_value(cyc)
         self.init_fault_list()
@@ -708,8 +706,10 @@ class FaultSimulator(FaultSimulatorExecute):
         self.rw_table["rw_event"].append(cur_rw_events)
 
     def dump_rw_table(self):
+        rw_table_dir = "prob_rw_table.csv"
         df = pd.DataFrame(self.rw_table)
-        df.to_csv("prob_rw_table.csv")
+        df.to_csv(rw_table_dir)
+        print(f"Dumped RW-table file: <{rw_table_dir}>")
 
 
     def simulate(self):
