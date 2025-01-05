@@ -80,25 +80,26 @@ class GenFFWrapper:
         FFI = self.fault_free_input_tag_name
         CNT_NAME = self.cnt_name
         CNT_NUM_DIGIT = self.cnt_num_digit
-        sig_list = list(self.sig_dict.keys())
-        for i,var in enumerate(sig_list):
-            if "picorv32_axi." in var:
-                sig_list[i] = var.replace("picorv32_axi.","top.uut.")
-            else:
-                sig_list[i] = "top.uut."+var
+        sig_list = {"input":[],"ff":[],"output":[]}
+        for cls in sig_dict:
+            for var in sig_dict[cls].keys():
+                if "picorv32_axi." in var:
+                    sig_list[cls].append(var.replace("picorv32_axi.","top.uut."))
+                else:
+                    sig_list[cls].append("top.uut."+var)
                 
 
         string =          [f'  reg [{CNT_NUM_DIGIT*8-1}:0] {CNT_NAME}_num;',
                            f'  integer ffi_f;',
                            f'  always@(posedge {CLK}) begin',
                            f'    if({RST} && {CNT_NAME}>=0)begin',
-                           f'      if({CNT_NAME}>0)begin',
+                           f'      if({CNT_NAME}>0)begin']
         string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["input"]]
         string = string + [f'        $fclose(ffi_f);',
                            f'      end',
                            f'      if({CNT_NAME}>=0)begin',
                            f'        cycle2num({CNT_NAME},{CNT_NAME}_num);']
-        string = string + [f'        ffi_f = $fopen('+'{'+f'"pattern/FaultFree_Signal_Value_C",{CNT_NAME}_num,".txt"'+'},"w");']
+        string = string + [f'        ffi_f = $fopen('+'{'+f'"ff_value/FaultFree_Signal_Value_C",{CNT_NAME}_num,".txt"'+'},"w");']
         string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["ff"]]
         string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["input"]]
         string = string + [f'      end',
