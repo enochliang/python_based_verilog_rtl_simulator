@@ -105,6 +105,9 @@ class AstAnalyzer:
     def get_sig__lv(self):
         return get_sig__lv(self.ast)
 
+    def get_sig__cir_lv(self):
+        return get_sig__cir_lv(self.ast)
+
     def get_sig__input_port(self):
         return get_sig__input_port(self.ast)
 

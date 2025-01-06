@@ -30,15 +30,16 @@ class GenFFWrapper:
         CNT_NAME = self.cnt_name
         CNT_WIDTH = self.cnt_width
 
-        string = ['//=============================',
-                  '// Generate Counter',
-                  '//=============================']
-        string = string + [f'reg [{CNT_WIDTH-1}:0] {CNT_NAME};',
-                           f'always@(posedge {CLK}) begin',
-                           f'  if(!{RST}) {CNT_NAME} <= 0;',
-                           f'  else       {CNT_NAME} <= {CNT_NAME} + 1;',
-                           f'end']
-        return string
+        string = f"""
+//=============================
+// Generate Counter
+//=============================
+reg [{CNT_WIDTH-1}:0] {CNT_NAME};
+always@(posedge {CLK}) begin
+  if(!{RST}) {CNT_NAME} <= 0;
+  else            {CNT_NAME} <= {CNT_NAME} + 1;
+end"""
+        print(string)
 
     def gen_task(self)->list:
         CHAR_WIDTH = 8
@@ -55,8 +56,8 @@ task cycle2num;
   begin
 """
         for i in range(CNT_STR_LEN-1,0,-1):
-            string += f"    num2char(cyc/1{'0'*i},num[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);"
-            string += f"    cyc = cyc % 1{'0'*i};"
+            string += f"    num2char(cyc/1{'0'*i},num[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);\n"
+            string += f"    cyc = cyc % 1{'0'*i};\n"
 
         string += f"""
     num2char(cyc,num[7:0]);
@@ -84,7 +85,7 @@ endtask"""
         print(string)
 
 
-    def gen_ff_input_dump_code(self)->str:
+    def gen_code__dump_ff_value(self):
         CLK = self.tb_clk_name
         RST = self.tb_rst_name
         FFI = self.ff_file_ptr
@@ -105,6 +106,9 @@ endtask"""
 
         string = f'''
 reg [{CNT_STR_LEN*8-1}:0] {CNT_STR};
+//=============================
+// Dump Fault Free Value
+//=============================
 integer {FFI};
 always@(posedge {CLK}) begin
   if({RST} && {CNT_NAME}>=0)begin
@@ -117,7 +121,7 @@ always@(posedge {CLK}) begin
     end
     if({CNT_NAME}>=0)begin
       cycle2num({CNT_NAME},{CNT_STR});
-      {FFI} = $fopen('+'{'+f'"{FFI_DIR}_C",{CNT_STR},".txt"'+'},"w");
+      {FFI} = $fopen({{"{FFI_DIR}_C",{CNT_STR},".txt"}},"w");
 '''
         for varname in sig_list["ff"]:
             string += f'      $fwrite(ffi_f,"%b\\n",{varname});\n'
@@ -127,6 +131,32 @@ always@(posedge {CLK}) begin
     end
   end
 end
+'''
+        print( string)
+
+    def gen_code__dump_golden_value(self):
+        CLK = self.tb_clk_name
+        RST = self.tb_rst_name
+        FFI = self.ff_file_ptr
+        FFI_DIR = self.ff_value_dir
+        GO = self.golden_file_ptr
+        GO_DIR = self.golden_value_dir
+        CNT_NAME = self.cnt_name
+        CNT_STR = self.cnt_name + "_str"
+        CNT_STR_LEN = self.cnt_str_len
+        sig_list = {"input":[],"ff":[],"output":[]}
+        for cls in sig_dict:
+            for var in sig_dict[cls].keys():
+                if "picorv32_axi." in var:
+                    sig_list[cls].append(var.replace("picorv32_axi.","top.uut."))
+                else:
+                    sig_list[cls].append("top.uut."+var)
+                
+
+        string = f'''
+//=============================
+// Dump Golden Value
+//=============================
 integer {GO};
 always@(posedge {CLK}) begin
   if({RST})begin
@@ -149,7 +179,8 @@ end
         self.gen_task()
         #string = string + self.gen_tb_head()
         self.gen_cnt()
-        self.gen_ff_input_dump_code()
+        self.gen_code__dump_ff_value()
+        self.gen_code__dump_golden_value()
         #string = string + self.gen_tb_tail()
 
 

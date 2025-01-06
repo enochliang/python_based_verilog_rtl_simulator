@@ -108,6 +108,11 @@ class AstNodeMerger:
             lv_node = init_assign.getchildren()[1]
             lv_name = lv_node.attrib["name"]
             rv_node = init_assign.getchildren()[0]
+
+            circuit_lv_set = set(self.analyzer.get_sig__cir_lv())
+            if lv_name in circuit_lv_set:
+                raise ASTModificationError(f"Cannot merge the signal, because the signal is also in another subcircuit. sig_name = {lv_name}")
+
             for varref in self.ast.findall(f".//varref[@name='{lv_name}']"):
                 varref.getparent().replace(varref,rv_node)
             for var in self.ast.findall(f".//var[@name='{lv_name}']"):

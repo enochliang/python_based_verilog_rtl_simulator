@@ -19,10 +19,6 @@ class GenFIWrapper:
         self.cnt_width = 32
         self.cnt_num_digit = 7
 
-    def print_strs(self,l:list):
-        for s in l:
-            print(s)
-
     def gen_cnt(self)->list:
         CLK = self.tb_clk_name
         RST = self.tb_rst_name
@@ -42,45 +38,49 @@ class GenFIWrapper:
         CNT_STR_WIDTH = CHAR_WIDTH * CNT_NUM_DIGIT
         CNT_WIDTH = self.cnt_width
         # setmask() task
-        string = ["task setmask;",
-                  "  input [31:0] num;",
-                  "  output [159:0] o_mask;",
-                  "  begin",
-                  "    o_mask = 1 << num;",
-                  "  end",
-                  "endtask"]
-        # 
-        string = ["task cycle2num;",
-                  f"  input [{CNT_WIDTH-1}:0] cyc;",
-                  f"  output [{CNT_STR_WIDTH-1}:0] num;",
-                  "  begin"]
+        string = f"""
+task setmask;
+  input [31:0] num;
+  output [159:0] o_mask;
+  begin
+    o_mask = 1 << num;
+  end
+endtask
+task cycle2num;
+  input [{CNT_WIDTH-1}:0] cyc;
+  output [{CNT_STR_WIDTH-1}:0] num;
+  begin
+"""
         for i in range(CNT_NUM_DIGIT-1,0,-1):
-            string = string + [f"    num2char(cyc/1{'0'*i},num[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);",
-                               f"    cyc = cyc % 1{'0'*i};"]
+            string = string + f"    num2char(cyc/1{'0'*i},num[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);\n"
+            string = string + f"    cyc = cyc % 1{'0'*i};\n"
 
-        string = string + ["    num2char(cyc,num[7:0]);",
-                  "  end",
-                  "endtask",
-                  "",
-                  "task num2char;",
-                  "  input [31:0] num;",
-                  "  output [7:0] ch;",
-                  "  begin",
-                  "    case(num)",
-                  "      'd0:ch=8'd48;",
-                  "      'd1:ch=8'd49;",
-                  "      'd2:ch=8'd50;",
-                  "      'd3:ch=8'd51;",
-                  "      'd4:ch=8'd52;",
-                  "      'd5:ch=8'd53;",
-                  "      'd6:ch=8'd54;",
-                  "      'd7:ch=8'd55;",
-                  "      'd8:ch=8'd56;",
-                  "      'd9:ch=8'd57;",
-                  "    endcase",
-                  "  end",
-                  "endtask"]
-        return string
+
+        string = string + f"""
+    num2char(cyc,num[7:0]);
+  end
+endtask
+
+task num2char;
+  input [31:0] num;
+  output [7:0] ch;
+  begin
+    case(num)
+      'd0:ch=8'd48;
+      'd1:ch=8'd49;
+      'd2:ch=8'd50;
+      'd3:ch=8'd51;
+      'd4:ch=8'd52;
+      'd5:ch=8'd53;
+      'd6:ch=8'd54;
+      'd7:ch=8'd55;
+      'd8:ch=8'd56;
+      'd9:ch=8'd57;
+    endcase
+  end
+endtask
+"""
+        print(string)
 
 
     def gen_ff_input_dump_code(self)->str:
