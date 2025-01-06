@@ -11,13 +11,12 @@ class GenFFWrapper:
         self.tb_rst_name = "resetn"
 
         # Verilog Variable Declaration Name
-        self.fault_free_input_tag_name = "FFI"
-        self.golden_output_tag_name = "GO"
-        self.cycle_cnt = ("cycle",32)
-
         self.cnt_name = "cycle"
         self.cnt_width = 32
-        self.cnt_num_digit = 7
+        self.cnt_str_len = 7
+
+        self.ff_value_dir = "ff_value/ff_value"
+        self.ff_file_ptr = "ffi_f"
 
     def print_strs(self,l:list):
         for s in l:
@@ -29,23 +28,30 @@ class GenFFWrapper:
         CNT_NAME = self.cnt_name
         CNT_WIDTH = self.cnt_width
 
-        string = [f'reg [{CNT_WIDTH-1}:0] {CNT_NAME};',
-                  f'always@(posedge {CLK}) begin',
-                  f'  if(!{RST}) {CNT_NAME} <= 0;',
-                  f'  else            {CNT_NAME} <= {CNT_NAME} + 1;',
-                  f'end']
+        string = ['//=============================',
+                  '// Generate Counter',
+                  '//=============================']
+        string = string + [f'reg [{CNT_WIDTH-1}:0] {CNT_NAME};',
+                           f'always@(posedge {CLK}) begin',
+                           f'  if(!{RST}) {CNT_NAME} <= 0;',
+                           f'  else       {CNT_NAME} <= {CNT_NAME} + 1;',
+                           f'end']
         return string
 
     def gen_task(self)->list:
         CHAR_WIDTH = 8
-        CNT_NUM_DIGIT = self.cnt_num_digit
-        CNT_STR_WIDTH = CHAR_WIDTH * CNT_NUM_DIGIT
+        CNT_STR_LEN = self.cnt_str_len
+        CNT_STR_WIDTH = CHAR_WIDTH * CNT_STR_LEN
         CNT_WIDTH = self.cnt_width
+
+        string = ['//=============================',
+                  '// Tasks',
+                  '//=============================']
         string = ["task cycle2num;",
                   f"  input [{CNT_WIDTH-1}:0] cyc;",
                   f"  output [{CNT_STR_WIDTH-1}:0] num;",
                   "  begin"]
-        for i in range(CNT_NUM_DIGIT-1,0,-1):
+        for i in range(CNT_STR_LEN-1,0,-1):
             string = string + [f"    num2char(cyc/1{'0'*i},num[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);",
                                f"    cyc = cyc % 1{'0'*i};"]
 
@@ -78,8 +84,10 @@ class GenFFWrapper:
         CLK = self.tb_clk_name
         RST = self.tb_rst_name
         FFI = self.fault_free_input_tag_name
+        FFI_DIR = self.ff_value_dir
         CNT_NAME = self.cnt_name
-        CNT_NUM_DIGIT = self.cnt_num_digit
+        CNT_STR = self.cnt_name + "_str"
+        CNT_STR_LEN = self.cnt_str_len
         sig_list = {"input":[],"ff":[],"output":[]}
         for cls in sig_dict:
             for var in sig_dict[cls].keys():
@@ -89,17 +97,17 @@ class GenFFWrapper:
                     sig_list[cls].append("top.uut."+var)
                 
 
-        string =          [f'  reg [{CNT_NUM_DIGIT*8-1}:0] {CNT_NAME}_num;',
-                           f'  integer ffi_f;',
+        string =          [f'  reg [{CNT_STR_LEN*8-1}:0] {CNT_STR};',
+                           f'  integer {FFI};',
                            f'  always@(posedge {CLK}) begin',
                            f'    if({RST} && {CNT_NAME}>=0)begin',
                            f'      if({CNT_NAME}>0)begin']
-        string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["input"]]
-        string = string + [f'        $fclose(ffi_f);',
+        string = string + [f'        $fwrite({FFI},"%b\\n",{varname});' for varname in sig_list["input"]]
+        string = string + [f'        $fclose({FFI});',
                            f'      end',
                            f'      if({CNT_NAME}>=0)begin',
-                           f'        cycle2num({CNT_NAME},{CNT_NAME}_num);']
-        string = string + [f'        ffi_f = $fopen('+'{'+f'"ff_value/FaultFree_Signal_Value_C",{CNT_NAME}_num,".txt"'+'},"w");']
+                           f'        cycle2num({CNT_NAME},{CNT_STR});']
+        string = string + [f'        {FFI} = $fopen('+'{'+f'"{FFI_DIR}_C",{CNT_STR},".txt"'+'},"w");']
         string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["ff"]]
         string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["input"]]
         string = string + [f'      end',
@@ -107,18 +115,30 @@ class GenFFWrapper:
                            f'  end',
                            ""]
 
+        string = string + [f'  integer go_f;',
+                           f'  always@(posedge {CLK}) begin',
+                           f'    if({RST})begin',
+                           f'      if({CNT_NAME}>0)begin',
+                           f'        cycle2num({CNT_NAME},{CNT_NAME}_num);']
+        string = string + [f'        go_f = $fopen('+'{'+f'"golden_value/Golden_Signal_Value_C",{CNT_NAME}_num,".txt"'+'},"w");']
+        string = string + [f'        $fwrite(go_f,"%b\\n",{varname});' for varname in sig_list["ff"]]
+        string = string + [f'        $fclose(ffi_f);']
+        string = string + [f'      end',
+                           f'    end',
+                           f'  end',
+                           ""]
+
         return string
-    
 
     def generate(self):
         print("====================================")
         print("Start Generating Fault Free Wrapper:")
         print("====================================")
         string = self.gen_task()
-        string = string + self.gen_tb_head()
+        #string = string + self.gen_tb_head()
         string = string + self.gen_cnt()
         string = string + self.gen_ff_input_dump_code()
-        string = string + self.gen_tb_tail()
+        #string = string + self.gen_tb_tail()
 
         for s in string:
             print(s)
@@ -133,13 +153,5 @@ if __name__ == "__main__":
     #fl = GenFaultList(1037,sig_dict)
     #fl.get_fault_list()
     gen = GenFFWrapper(sig_dict)
-    l = gen.gen_cnt()
-    gen.print_strs(l)
-    l = gen.gen_task()
-    gen.print_strs(l)
-    l= gen.gen_ff_input_dump_code()
-    gen.print_strs(l)
-    #gen.generate()
-    #gen = Gen_FI_Wrapper(sig_dict)
-    #gen.generate()
+    gen.generate()
 

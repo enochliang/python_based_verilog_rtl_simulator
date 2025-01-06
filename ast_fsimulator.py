@@ -670,7 +670,7 @@ class FaultSimulator(FaultSimulatorExecute):
         cur_rw_events = []
 
         rw_events = {}
-        for obs in self.my_ast.observe_point_list:
+        for obs in self.my_ast.register_list:
             dst_reg_name = obs.name
             for fault, f_type in obs.fault_list:
                 if fault not in rw_events:
