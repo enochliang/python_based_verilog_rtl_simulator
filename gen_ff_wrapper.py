@@ -1,109 +1,56 @@
 from ast_modifier import *
 from ast_schedule import AstSchedulePreprocess
+from gen_wrapper import GenWrapper
 
 from lxml import etree
 import json
 
-class GenFFWrapper:
+class GenFFWrapper(GenWrapper):
     def __init__(self,sig_dict):
-        self.sig_dict = sig_dict
-        self.tb_clk_name = "clk"
-        self.tb_rst_name = "resetn"
-
-        # Verilog Variable Declaration Name
-        self.cnt_name = "cycle"
-        self.cnt_width = 32
-        self.cnt_str_len = 7
+        GenWrapper.__init__(self,sig_dict)
 
         self.ff_value_dir = "ff_value/ff_value"
         self.ff_file_ptr = "ffi_f"
         self.golden_value_dir = "golden_value/golden_value"
         self.golden_file_ptr = "go_f"
 
-    def print_strs(self,l:list):
-        for s in l:
-            print(s)
+        self.get_ff_sig_list()
 
-    def gen_cnt(self)->list:
-        CLK = self.tb_clk_name
-        RST = self.tb_rst_name
-        CNT_NAME = self.cnt_name
-        CNT_WIDTH = self.cnt_width
+    def get_ff_sig_list(self):
+        TOP_MODULE = self.top_module_name
+        HIER_ABOVE = self.hier_above_top
+        self.sig_list = {"input":[],"ff":[],"output":[]}
+        for cls in self.sig_dict:
+            for var in self.sig_dict[cls].keys():
+                if TOP_MODULE+"." in var:
+                    self.sig_list[cls].append(var.replace(TOP_MODULE+".",HIER_ABOVE+"."))
+                else:
+                    self.sig_list[cls].append(HIER_ABOVE+"."+var)
 
-        string = f"""
-//=============================
-// Generate Counter
-//=============================
-reg [{CNT_WIDTH-1}:0] {CNT_NAME};
-always@(posedge {CLK}) begin
-  if(!{RST}) {CNT_NAME} <= 0;
-  else            {CNT_NAME} <= {CNT_NAME} + 1;
-end"""
-        print(string)
-
-    def gen_task(self)->list:
-        CHAR_WIDTH = 8
-        CNT_STR_LEN = self.cnt_str_len
-        CNT_STR_WIDTH = CHAR_WIDTH * CNT_STR_LEN
-        CNT_WIDTH = self.cnt_width
-        string = f"""
+    def gen_task(self):
+        string = """
 //=============================
 // Tasks
-//=============================
-task cycle2num;
-  input [{CNT_WIDTH-1}:0] cyc;
-  output [{CNT_STR_WIDTH-1}:0] num;
-  begin
-"""
-        for i in range(CNT_STR_LEN-1,0,-1):
-            string += f"    num2char(cyc/1{'0'*i},num[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);\n"
-            string += f"    cyc = cyc % 1{'0'*i};\n"
-
-        string += f"""
-    num2char(cyc,num[7:0]);
-  end
-endtask
-
-task num2char;
-  input [31:0] num;
-  output [7:0] ch;
-  begin
-    case(num)
-      'd0:ch=8'd48;
-      'd1:ch=8'd49;
-      'd2:ch=8'd50;
-      'd3:ch=8'd51;
-      'd4:ch=8'd52;
-      'd5:ch=8'd53;
-      'd6:ch=8'd54;
-      'd7:ch=8'd55;
-      'd8:ch=8'd56;
-      'd9:ch=8'd57;
-    endcase
-  end
-endtask"""
+//============================="""
         print(string)
-
+        self.gen_task__cycle2num()
+        self.gen_task__num2char()
 
     def gen_code__dump_ff_value(self):
+        # constant
         CLK = self.tb_clk_name
         RST = self.tb_rst_name
         FFI = self.ff_file_ptr
         FFI_DIR = self.ff_value_dir
         GO = self.golden_file_ptr
         GO_DIR = self.golden_value_dir
-        CNT_NAME = self.cnt_name
-        CNT_STR = self.cnt_name + "_str"
+        CNT_NAME = self.CNT_NAME
+        CNT_STR = self.CNT_NAME + "_str"
         CNT_STR_LEN = self.cnt_str_len
-        sig_list = {"input":[],"ff":[],"output":[]}
-        for cls in sig_dict:
-            for var in sig_dict[cls].keys():
-                if "picorv32_axi." in var:
-                    sig_list[cls].append(var.replace("picorv32_axi.","top.uut."))
-                else:
-                    sig_list[cls].append("top.uut."+var)
-                
 
+        sig_list = self.sig_list
+                
+        # generate verilog code
         string = f'''
 reg [{CNT_STR_LEN*8-1}:0] {CNT_STR};
 //=============================
@@ -135,24 +82,20 @@ end
         print( string)
 
     def gen_code__dump_golden_value(self):
+        # constant
         CLK = self.tb_clk_name
         RST = self.tb_rst_name
         FFI = self.ff_file_ptr
         FFI_DIR = self.ff_value_dir
         GO = self.golden_file_ptr
         GO_DIR = self.golden_value_dir
-        CNT_NAME = self.cnt_name
-        CNT_STR = self.cnt_name + "_str"
+        CNT_NAME = self.CNT_NAME
+        CNT_STR = self.CNT_NAME + "_str"
         CNT_STR_LEN = self.cnt_str_len
-        sig_list = {"input":[],"ff":[],"output":[]}
-        for cls in sig_dict:
-            for var in sig_dict[cls].keys():
-                if "picorv32_axi." in var:
-                    sig_list[cls].append(var.replace("picorv32_axi.","top.uut."))
-                else:
-                    sig_list[cls].append("top.uut."+var)
-                
 
+        sig_list = self.sig_list
+                
+        # generate verilog code
         string = f'''
 //=============================
 // Dump Golden Value
@@ -172,16 +115,13 @@ always@(posedge {CLK}) begin
   end
 end
 '''
-
         print( string)
 
     def generate(self):
         self.gen_task()
-        #string = string + self.gen_tb_head()
         self.gen_cnt()
         self.gen_code__dump_ff_value()
         self.gen_code__dump_golden_value()
-        #string = string + self.gen_tb_tail()
 
 
 
@@ -189,9 +129,6 @@ if __name__ == "__main__":
     
     f = open("sig_list/fsim_sig_table.json","r")
     sig_dict = json.load(f)
-    #f.close()
-    #fl = GenFaultList(1037,sig_dict)
-    #fl.get_fault_list()
     gen = GenFFWrapper(sig_dict)
     gen.generate()
 

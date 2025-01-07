@@ -1,146 +1,236 @@
 from ast_modifier import *
 from ast_schedule import AstSchedulePreprocess
+from gen_wrapper import GenWrapper
 
 from lxml import etree
 import json
 
-class GenFIWrapper:
+class GenFIWrapper(GenWrapper):
     def __init__(self,sig_dict):
-        self.sig_dict = sig_dict
-        self.tb_clk_name = "clk"
-        self.tb_rst_name = "resetn"
+        GenWrapper.__init__(self,sig_dict)
+
+        self.NUM_STR_LEN = 4
 
         # Verilog Variable Declaration Name
         self.fault_free_input_tag_name = "FFI"
         self.golden_output_tag_name = "GO"
-        self.cycle_cnt = ("cycle",32)
 
-        self.cnt_name = "cycle"
-        self.cnt_width = 32
-        self.cnt_num_digit = 7
+        self.FF_DIR = "ff_value/ff_value"
+        self.GOLD_DIR = "golden_value/golden_value"
 
-    def gen_cnt(self)->list:
-        CLK = self.tb_clk_name
-        RST = self.tb_rst_name
-        CNT_NAME = self.cnt_name
-        CNT_WIDTH = self.cnt_width
+        self.mask_size = self.get_mask_size()
 
-        string = [f'reg [{CNT_WIDTH-1}:0] {CNT_NAME};',
-                  f'always@(posedge {CLK}) begin',
-                  f'  if(!{RST}) {CNT_NAME} <= 0;',
-                  f'  else            {CNT_NAME} <= {CNT_NAME} + 1;',
-                  f'end']
-        return string
+        # File Pointer
+        self.CTRL_FP = "f_control"
+        self.INPUT_FP = "f_input"
+        self.GOLD_FP = "f_golden"
+        self.OBS_FP = "f_observe"
 
-    def gen_task(self)->list:
-        CHAR_WIDTH = 8
-        CNT_NUM_DIGIT = self.cnt_num_digit
-        CNT_STR_WIDTH = CHAR_WIDTH * CNT_NUM_DIGIT
-        CNT_WIDTH = self.cnt_width
+
+    def get_mask_size(self)->int:
+        max_size = 0
+        for sig in self.sig_dict["ff"]:
+            if self.sig_dict["ff"][sig] > max_size:
+                max_size = self.sig_dict["ff"][sig]
+        return max_size
+
+    def gen_task(self):
+        string = """
+//=============================
+// Tasks
+//============================="""
+        print(string)
+        self.gen_task__setmask()
+        self.gen_task__cycle2num()
+        self.gen_task__num2char()
+        self.gen_task__num2str()
+
+    def gen_task__setmask(self):
+        MASK_WIDTH = self.mask_size
         # setmask() task
         string = f"""
 task setmask;
   input [31:0] num;
-  output [159:0] o_mask;
+  output [{MASK_WIDTH-1}:0] o_mask;
   begin
     o_mask = 1 << num;
   end
-endtask
-task cycle2num;
-  input [{CNT_WIDTH-1}:0] cyc;
-  output [{CNT_STR_WIDTH-1}:0] num;
-  begin
-"""
-        for i in range(CNT_NUM_DIGIT-1,0,-1):
-            string = string + f"    num2char(cyc/1{'0'*i},num[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);\n"
-            string = string + f"    cyc = cyc % 1{'0'*i};\n"
-
-
-        string = string + f"""
-    num2char(cyc,num[7:0]);
-  end
-endtask
-
-task num2char;
-  input [31:0] num;
-  output [7:0] ch;
-  begin
-    case(num)
-      'd0:ch=8'd48;
-      'd1:ch=8'd49;
-      'd2:ch=8'd50;
-      'd3:ch=8'd51;
-      'd4:ch=8'd52;
-      'd5:ch=8'd53;
-      'd6:ch=8'd54;
-      'd7:ch=8'd55;
-      'd8:ch=8'd56;
-      'd9:ch=8'd57;
-    endcase
-  end
-endtask
-"""
+endtask"""
         print(string)
 
+    def gen_task__num2str(self):
+        # constants
+        CHAR_WIDTH = 8
+        NUM_STR_LEN = self.NUM_STR_LEN
+        NUM_STR_WIDTH = CHAR_WIDTH * NUM_STR_LEN
 
-    def gen_ff_input_dump_code(self)->str:
-        CLK = self.tb_clk_name
-        RST = self.tb_rst_name
-        FFI = self.fault_free_input_tag_name
-        CNT_NAME = self.cnt_name
-        CNT_NUM_DIGIT = self.cnt_num_digit
-        sig_list = {"input":[],"ff":[],"output":[]}
-        for cls in sig_dict:
-            for var in sig_dict[cls].keys():
-                if "picorv32_axi." in var:
-                    sig_list[cls].append(var.replace("picorv32_axi.","top.uut."))
-                else:
-                    sig_list[cls].append("top.uut."+var)
-                
+        # generate verilog code
+        string = f"""
+task num2str;
+  input [31:0] num;
+  output [{NUM_STR_WIDTH-1}:0] str;
+  begin
+"""
+        for i in range(NUM_STR_LEN-1,0,-1):
+            string += f"    num2char(cyc/1{'0'*i},str[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);\n"
+            string += f"    cyc = cyc % 1{'0'*i};\n"
 
-        string =          [f'  reg [{CNT_NUM_DIGIT*8-1}:0] {CNT_NAME}_num;',
-                           f'  integer ffi_f;',
-                           f'  always@(posedge {CLK}) begin',
-                           f'    if({RST} && {CNT_NAME}>=0)begin',
-                           f'      if({CNT_NAME}>0)begin']
-        string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["input"]]
-        string = string + [f'        $fclose(ffi_f);',
-                           f'      end',
-                           f'      if({CNT_NAME}>=0)begin',
-                           f'        cycle2num({CNT_NAME},{CNT_NAME}_num);']
-        string = string + [f'        ffi_f = $fopen('+'{'+f'"ff_value/FaultFree_Signal_Value_C",{CNT_NAME}_num,".txt"'+'},"w");']
-        string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["ff"]]
-        string = string + [f'        $fwrite(ffi_f,"%b\\n",{varname});' for varname in sig_list["input"]]
-        string = string + [f'      end',
-                           f'    end',
-                           f'  end',
-                           ""]
+        string += f"""
+    num2char(num,str[7:0]);
+  end
+endtask"""
+        print(string)
 
-        return string
-    
+    def gen_port_connect(self):
+        print("(")
+        for sig in self.sig_dict["input"]:
+            width = self.sig_dict["input"][sig]
+            print(f"  .{sig}(tb_in__{sig}),")
+        for sig in self.sig_dict["output"]:
+            width = self.sig_dict["output"][sig]
+            print(f"  .{sig}({sig}),")
+        print(");")
+
+    def gen_reg(self):
+        self.gen_reg__fi_control()
+        self.gen_reg__in_buffer()
+        self.gen_reg__out_buffer()
+        self.gen_wire__out_port()
+        self.gen_reg__ff_reg_buffer()
+        self.gen_reg__golden_reg_buffer()
+
+    def gen_reg__fi_control(self):
+        MASK_WIDTH = self.mask_size
+        CNT_NAME = self.CNT_NAME
+        CNT_WIDTH = self.cnt_width
+        CNT_STR_LEN = self.cnt_str_len
+
+        NUM_STR_LEN = self.NUM_STR_LEN
+        print("//----------------------------------------------------------------")
+        print("//  FI_Wrapper Control Signals Declaration")
+        print("//----------------------------------------------------------------")
+        print(f"reg [{CNT_WIDTH-1}:0] {CNT_NAME}")
+        print(f"reg [{8*CNT_STR_LEN-1}:0] {CNT_NAME}_str")
+        print(f"reg [{8*CNT_STR_LEN-1}:0] {CNT_NAME}_str2")
+        print(f"reg [31:0] inj_id;")
+        print(f"reg [{8*NUM_STR_LEN-1}:0] inj_id_str;")
+        print(f"reg [31:0] bit_pos;")
+        print(f"reg [{8*NUM_STR_LEN-1}:0] bit_pos_str;")
+        print(f"reg [{MASK_WIDTH-1}:0] mask;")
+        print(f"reg inj_flag;")
+        print(f"reg input_flag;")
+
+    def gen_fptr(self):
+        CTRL_FP = self.CTRL_FP
+        INPUT_FP = self.INPUT_FP
+        GOLD_FP = self.GOLD_FP
+        OBS_FP = self.OBS_FP
+        print("// File IO")
+        print(f"integer {CTRL_FP},{INPUT_FP},{GOLD_FP},{OBS_FP};")
+
+
+    def gen_reg__in_buffer(self):
+        print("//=====================")
+        print("// input port buffers")
+        print("//=====================")
+        for sig in self.sig_dict["input"]:
+            width = self.sig_dict["input"][sig]
+            print(f"reg [{width-1}:0] tb_in__{sig};")
+            print(f"reg [{width-1}:0] tb_in2__{sig};")
+
+    def gen_reg__out_buffer(self):
+        print("//=====================")
+        print("// output port buffers")
+        print("//=====================")
+        for sig in self.sig_dict["output"]:
+            width = self.sig_dict["output"][sig]
+            print(f"reg [{width-1}:0] tb_out__{sig};")
+
+    def gen_wire__out_port(self):
+        print("//=====================")
+        print("// output port wire")
+        print("//=====================")
+        for sig in self.sig_dict["output"]:
+            width = self.sig_dict["output"][sig]
+            print(f"wire [{width-1}:0] {sig};")
+
+    def gen_reg__ff_reg_buffer(self):
+        print("//=============================")
+        print("// fault free register buffers")
+        print("//=============================")
+        for sig in self.sig_dict["ff"]:
+            width = self.sig_dict["ff"][sig]
+            sig_name = sig.replace("[","__").replace("]","").replace(".","__")
+            print(f"reg [{width-1}:0] ff_buf__{sig_name};")
+
+    def gen_reg__golden_reg_buffer(self):
+        print("//=============================")
+        print("// golden register buffers")
+        print("//=============================")
+        for sig in self.sig_dict["ff"]:
+            width = self.sig_dict["ff"][sig]
+            sig_name = sig.replace("[","__").replace("]","").replace(".","__")
+            print(f"reg [{width-1}:0] golden_buf__{sig_name};")
+
+    def gen_inj_flow(self):
+        print('initial begin')
+        print('  tb_clk = 0;')
+        print('  tb_reset_n = 1;')
+        print('  inj_flag = 0;')
+        print('  input_flag = 0;\n')
+
+        print(f'  f_control = $fopen("control.txt","r");')
+        print(f'  $fscanf({self.CTRL_FP},"%d",cycle);')
+        print(f'  $fscanf({self.CTRL_FP},"%d",inj_id);')
+        print(f'  num2str(inj_id,inj_id_str);')
+        print(f'  $fscanf({self.CTRL_FP},"%d",bit_pos);')
+        print(f'  num2str(,bit_pos_str);')
+        print(f'  $fclose({self.CTRL_FP});')
+
+        print(f'  cycle2num({self.CNT_NAME},{self.CNT_NAME}_str);')
+        print(f'  cycle2num({self.CNT_NAME}+1,{self.CNT_NAME}_str2);')
+
+        print(f'  setmask(bit_pos,mask);')
+
+        # load fault free input buffer
+        print(f'  //==============================')
+        print(f'  // load fault free input buffer')
+        print(f'  //==============================')
+        print(f'  {self.INPUT_FP} = $fopen({{"{self.FF_DIR}_C",{self.CNT_NAME}_str,".txt"}},"r");')
+        for sig in self.sig_dict["ff"]:
+            ff_buf_name = "ff_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
+            print(f'  $fscanf({self.INPUT_FP},"%b",{ff_buf_name});')
+        for sig in self.sig_dict["input"]:
+            ff_buf_name = "tb_in__"+sig.replace("[","__").replace("]","").replace(".","__")
+            print(f'  $fscanf({self.INPUT_FP},"%b",{ff_buf_name});')
+        for sig in self.sig_dict["input"]:
+            ff_buf_name = "tb_in2__"+sig.replace("[","__").replace("]","").replace(".","__")
+            print(f'  $fscanf({self.INPUT_FP},"%b",{ff_buf_name});')
+
+        # load golden buffer
+        print(f'  //==============================')
+        print(f'  // load golden output buffer')
+        print(f'  //==============================')
+        print(f'  {self.GOLD_FP} = $fopen({{"{self.GOLD_DIR}_C",{self.CNT_NAME}_str2,".txt"}},"r");')
+        for sig in self.sig_dict["ff"]:
+            gold_buf_name = "ff_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
+            print(f'  $fscanf({self.GOLD_FP},"%b",{gold_buf_name});')
+
+        # load
+
+        print("end")
 
     def generate(self):
-        print("====================================")
-        print("Start Generating Fault Free Wrapper:")
-        print("====================================")
-        string = self.gen_task()
-        #string = string + self.gen_tb_head()
-        string = string + self.gen_cnt()
-        string = string + self.gen_ff_input_dump_code()
-        #string = string + self.gen_tb_tail()
-
-        for s in string:
-            print(s)
-
-
+        self.gen_task()
+        self.gen_reg()
+        self.gen_port_connect()
+        self.gen_fptr()
+        self.gen_inj_flow()
 
 if __name__ == "__main__":
     
     f = open("sig_list/fsim_sig_table.json","r")
     sig_dict = json.load(f)
-    #f.close()
-    #fl = GenFaultList(1037,sig_dict)
-    #fl.get_fault_list()
     gen = GenFIWrapper(sig_dict)
     gen.generate()
 
