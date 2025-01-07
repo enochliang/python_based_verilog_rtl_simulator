@@ -7,7 +7,7 @@ import json
 class GenWrapper:
     def __init__(self,sig_dict):
         self.sig_dict = sig_dict
-        self.tb_clk_name = "clk"
+        self.tb_clk_name = "tb_clk"
         self.tb_rst_name = "resetn"
 
         # Verilog Variable Declaration Name

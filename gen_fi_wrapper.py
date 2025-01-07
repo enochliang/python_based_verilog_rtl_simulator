@@ -17,8 +17,16 @@ class GenFIWrapper(GenWrapper):
 
         self.FF_DIR = "ff_value/ff_value"
         self.GOLD_DIR = "golden_value/golden_value"
+        self.OBS_DIR = "result/result"
 
         self.mask_size = self.get_mask_size()
+
+
+        self.INJ_ID = "inj_id"
+        self.BIT_POS = "bit_pos"
+
+        self.INPUT_FLG = "input_flag"
+        self.INJ_FLG = "inj_flag"
 
         # File Pointer
         self.CTRL_FP = "f_control"
@@ -109,9 +117,9 @@ endtask"""
         print("//----------------------------------------------------------------")
         print("//  FI_Wrapper Control Signals Declaration")
         print("//----------------------------------------------------------------")
-        print(f"reg [{CNT_WIDTH-1}:0] {CNT_NAME}")
-        print(f"reg [{8*CNT_STR_LEN-1}:0] {CNT_NAME}_str")
-        print(f"reg [{8*CNT_STR_LEN-1}:0] {CNT_NAME}_str2")
+        print(f"reg [{CNT_WIDTH-1}:0] {CNT_NAME};")
+        print(f"reg [{8*CNT_STR_LEN-1}:0] {CNT_NAME}_str;")
+        print(f"reg [{8*CNT_STR_LEN-1}:0] {CNT_NAME}_str2;")
         print(f"reg [31:0] inj_id;")
         print(f"reg [{8*NUM_STR_LEN-1}:0] inj_id_str;")
         print(f"reg [31:0] bit_pos;")
@@ -133,6 +141,7 @@ endtask"""
         print("//=====================")
         print("// input port buffers")
         print("//=====================")
+        print(f"reg {self.tb_clk_name}")
         for sig in self.sig_dict["input"]:
             width = self.sig_dict["input"][sig]
             print(f"reg [{width-1}:0] tb_in__{sig};")
@@ -175,22 +184,20 @@ endtask"""
     def gen_inj_flow(self):
         print('initial begin')
         print('  tb_clk = 0;')
-        print('  tb_reset_n = 1;')
-        print('  inj_flag = 0;')
-        print('  input_flag = 0;\n')
+        print(f'  { self.INJ_FLG } = 0;')
+        print(f'  { self.INPUT_FLG } = 0;\n')
 
-        print(f'  f_control = $fopen("control.txt","r");')
-        print(f'  $fscanf({self.CTRL_FP},"%d",cycle);')
-        print(f'  $fscanf({self.CTRL_FP},"%d",inj_id);')
-        print(f'  num2str(inj_id,inj_id_str);')
-        print(f'  $fscanf({self.CTRL_FP},"%d",bit_pos);')
-        print(f'  num2str(,bit_pos_str);')
-        print(f'  $fclose({self.CTRL_FP});')
+        print(f'  { self.CTRL_FP } = $fopen("control.txt","r");')
+        print(f'  $fscanf({ self.CTRL_FP }, "%d", { self.CNT_NAME });')
+        print(f'  $fscanf({ self.CTRL_FP }, "%d", { self.INJ_ID });')
+        print(f'  $fscanf({ self.CTRL_FP }, "%d", { self.BIT_POS });')
+        print(f'  $fclose({ self.CTRL_FP });\n')
 
+        print(f'  num2str({ self.INJ_ID }, { self.INJ_ID }_str);')
+        print(f'  num2str({ self.BIT_POS }, { self.BIT_POS }_str);')
         print(f'  cycle2num({self.CNT_NAME},{self.CNT_NAME}_str);')
         print(f'  cycle2num({self.CNT_NAME}+1,{self.CNT_NAME}_str2);')
-
-        print(f'  setmask(bit_pos,mask);')
+        print(f'  setmask({ self.BIT_POS }, mask);\n')
 
         # load fault free input buffer
         print(f'  //==============================')
@@ -213,12 +220,55 @@ endtask"""
         print(f'  //==============================')
         print(f'  {self.GOLD_FP} = $fopen({{"{self.GOLD_DIR}_C",{self.CNT_NAME}_str2,".txt"}},"r");')
         for sig in self.sig_dict["ff"]:
-            gold_buf_name = "ff_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
+            gold_buf_name = "golden_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
             print(f'  $fscanf({self.GOLD_FP},"%b",{gold_buf_name});')
 
-        # load
+        # timing control
+        print("  //================")
+        print("  // timing control")
+        print("  //================")
+        print("  #CLK_HALF_PERIOD {self.INPUT_FLG} = !{self.INPUT_FLG};")
+        print("  #CLK_HALF_PERIOD {self.INJ_FLG} = !{self.INJ_FLG};")
+        print("  #CLK_HALF_PERIOD tb_clk = !tb_clk;")
+        print("  #CLK_HALF_PERIOD {self.INPUT_FLG} = !{self.INPUT_FLG};")
+        print("  #CLK_HALF_PERIOD tb_clk = !tb_clk;")
+        print("  #CLK_HALF_PERIOD;")
 
+        # dump fault effect observation
+        print(f'  //===============================')
+        print(f'  // dump fault effect observation')
+        print(f'  //===============================')
+        print(f'  {self.OBS_FP} = $fopen({{"{self.OBS_DIR}_C", {self.CNT_NAME}_str, "_R", inj_id_str, "_B", pos_bit_str , ".txt"}},"r");')
+        for sig in self.sig_dict["ff"]:
+            gold_buf_name = "golden_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
+            print(f'  $fwrite({self.OBS_FP},"%b\\n",{gold_buf_name}^{sig});')
         print("end")
+
+        print(f'//===============================')
+        print(f'// always blocks')
+        print(f'//===============================')
+        print(f"// fault free pattern filling (to registers)")
+        print(f"always@(posedge {self.INPUT_FLG})begin")
+        for sig in self.sig_dict["ff"]:
+            ff_buf_name = "ff_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
+            print(f'  {sig} <= {ff_buf_name};')
+        print(f"end")
+        print(f"// fault injection")
+        print(f"always@(posedge {self.INJ_FLG})begin")
+        print(f"  case({ self.INJ_ID })")
+        for idx, sig in enumerate(self.sig_dict["ff"]):
+            width = self.sig_dict["ff"][sig]
+            print(f"    'd{idx}: {sig} <= {sig}^mask[{width-1}:0];")
+        print(f"  endcase")
+        print(f"end")
+        print(f"// input sequence")
+        print(f"always@(posedge {self.tb_clk_name} )begin")
+        for sig in self.sig_dict["input"]:
+            ff_buf_name = "tb_in__"+sig.replace("[","__").replace("]","").replace(".","__")
+            ff_buf_name2 = "tb_in2__"+sig.replace("[","__").replace("]","").replace(".","__")
+            print(f"  {ff_buf_name} <= {ff_buf_name2};")
+        print(f"end")
+
 
     def generate(self):
         self.gen_task()
