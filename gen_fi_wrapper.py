@@ -42,6 +42,9 @@ class GenFIWrapper(GenWrapper):
                 max_size = self.sig_dict["ff"][sig]
         return max_size
 
+    def gen_param(self):
+        print("parameter CLK_HALF_PERIOD = 1;")
+
     def gen_task(self):
         string = """
 //=============================
@@ -238,10 +241,10 @@ endtask"""
         print(f'  //===============================')
         print(f'  // dump fault effect observation')
         print(f'  //===============================')
-        print(f'  {self.OBS_FP} = $fopen({{"{self.OBS_DIR}_C", {self.CNT_NAME}_str, "_R", inj_id_str, "_B", pos_bit_str , ".txt"}},"r");')
+        print(f'  {self.OBS_FP} = $fopen({{"{self.OBS_DIR}_C", {self.CNT_NAME}_str, "_R", {self.INJ_ID}_str, "_B", {self.BIT_POS}_str , ".txt"}},"r");')
         for sig in self.sig_dict["ff"]:
             gold_buf_name = "golden_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
-            print(f'  $fwrite({self.OBS_FP},"%b\\n",{gold_buf_name}^{sig});')
+            print(f'  $fwrite({self.OBS_FP},"%b\\n", {gold_buf_name} ^ {sig});')
         print("end")
 
         print(f'//===============================')
@@ -272,6 +275,7 @@ endtask"""
 
     def generate(self):
         self.gen_task()
+        self.gen_param()
         self.gen_reg()
         self.gen_port_connect()
         self.gen_fptr()
