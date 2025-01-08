@@ -1,5 +1,6 @@
 from ast_analyzer import AstAnalyzer
 from ast_dump import *
+from exceptions import *
 
 from lxml import etree
 
@@ -77,6 +78,7 @@ class AstNodeMerger:
                 signal_buckets[bucket_idx].add(v2)
         pprint.pp(signal_buckets)
         for i,s in enumerate(signal_buckets):
+            print(s)
             main_signal = [v for v in s if v in all_signal_set][0]
             signal_merge_dict[main_signal] = s
 
@@ -111,7 +113,7 @@ class AstNodeMerger:
 
             circuit_lv_set = set(self.analyzer.get_sig__cir_lv())
             if lv_name in circuit_lv_set:
-                raise ASTModificationError(f"Cannot merge the signal, because the signal is also in another subcircuit. sig_name = {lv_name}")
+                raise ASTModificationError(f"Cannot merge the signal, because the signal is also in another subcircuit. sig_name = {lv_name}",0)
 
             for varref in self.ast.findall(f".//varref[@name='{lv_name}']"):
                 varref.getparent().replace(varref,rv_node)

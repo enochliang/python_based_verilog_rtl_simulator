@@ -80,8 +80,8 @@ task num2str;
   begin
 """
         for i in range(NUM_STR_LEN-1,0,-1):
-            string += f"    num2char(cyc/1{'0'*i},str[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);\n"
-            string += f"    cyc = cyc % 1{'0'*i};\n"
+            string += f"    num2char(num/1{'0'*i},str[{CHAR_WIDTH*(i+1)-1}:{CHAR_WIDTH*i}]);\n"
+            string += f"    num = num % 1{'0'*i};\n"
 
         string += f"""
     num2char(num,str[7:0]);
@@ -117,6 +117,7 @@ endtask"""
         print("//----------------------------------------------------------------")
         print("//  FI_Wrapper Control Signals Declaration")
         print("//----------------------------------------------------------------")
+        print(f"reg {self.tb_clk_name};")
         print(f"reg [{CNT_WIDTH-1}:0] {CNT_NAME};")
         print(f"reg [{8*CNT_STR_LEN-1}:0] {CNT_NAME}_str;")
         print(f"reg [{8*CNT_STR_LEN-1}:0] {CNT_NAME}_str2;")
@@ -141,7 +142,6 @@ endtask"""
         print("//=====================")
         print("// input port buffers")
         print("//=====================")
-        print(f"reg {self.tb_clk_name}")
         for sig in self.sig_dict["input"]:
             width = self.sig_dict["input"][sig]
             print(f"reg [{width-1}:0] tb_in__{sig};")
@@ -227,12 +227,12 @@ endtask"""
         print("  //================")
         print("  // timing control")
         print("  //================")
-        print("  #CLK_HALF_PERIOD {self.INPUT_FLG} = !{self.INPUT_FLG};")
-        print("  #CLK_HALF_PERIOD {self.INJ_FLG} = !{self.INJ_FLG};")
-        print("  #CLK_HALF_PERIOD tb_clk = !tb_clk;")
-        print("  #CLK_HALF_PERIOD {self.INPUT_FLG} = !{self.INPUT_FLG};")
-        print("  #CLK_HALF_PERIOD tb_clk = !tb_clk;")
-        print("  #CLK_HALF_PERIOD;")
+        print(f"  #CLK_HALF_PERIOD {self.INPUT_FLG} = !{self.INPUT_FLG};")
+        print(f"  #CLK_HALF_PERIOD {self.INJ_FLG} = !{self.INJ_FLG};")
+        print(f"  #CLK_HALF_PERIOD {self.tb_clk_name} = !{self.tb_clk_name};")
+        print(f"  #CLK_HALF_PERIOD {self.INPUT_FLG} = !{self.INPUT_FLG};")
+        print(f"  #CLK_HALF_PERIOD {self.tb_clk_name} = !{self.tb_clk_name};")
+        print(f"  #CLK_HALF_PERIOD;")
 
         # dump fault effect observation
         print(f'  //===============================')

@@ -441,7 +441,7 @@ def get_children_unique__under(ast,target="verilator_xml",output=True) -> list:
     return children_set
 
 def get_sig__cir_lv(ast):
-    return [get_sig_name(assign.getchildren()[1]) for assign in ast.findall(".//always//assigndly") + ast.findall(".//always//assign") + ast.findall(".//contassign")]
+    return [get_sig_name(assign.getchildren()[1]) for assign in ast.findall(".//always//assigndly") + ast.findall(".//always//assign") + ast.findall(".//contassign") ]
 
 def get_sig__lv(ast):
     return [get_sig_name(assign.getchildren()[1]) for assign in ast.findall(".//initial//assign") + ast.findall(".//always//assigndly") + ast.findall(".//always//assign") + ast.findall(".//contassign")]

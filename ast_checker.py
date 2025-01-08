@@ -361,33 +361,31 @@ class AstChecker:
         print("[Checker Task] start checking <initial> only has 1 <assign>.")
         for initial in self.ast.findall(".//initial"):
             if self.analyzer.get_children__ordered(initial) != ["assign"]:
-                self._get_loc_info(initial)
+                self._show_loc_info(initial)
                 print("  - [Checker Report] warning: found an <initial> not only assigns one signal.")
         for assign in self.ast.findall(".//initial//assign"):
             if self.analyzer.get_children__ordered(assign) != ["const","varref"]:
-                self._get_loc_info(initial)
+                self._show_loc_info(initial)
                 print("  - [Checker Report] warning: found an <initial/assign> not assigns <varref> with a <const>.")
         print("-"*80)
 
     def _check_no_output_reg(self):
         print("[Checker Task] start checking no output reg in circuit.")
-        ff_set = set()
-        for assigndly in self.ast.findall(".//always//assigndly"):
-            lv_node = self.analyzer.get_sig_node(assigndly.getchildren()[1])
-            ff_set.add(lv_node.attrib["name"])
-        
         flag = False
-        for output_var in self.ast.findall(".//module//var[@dir='output']"):
-            var_name = output_var.attrib["name"]
-            if var_name in ff_set:
-                flag = True
-                print(f"  - [Checker Report] warning: found a output reg, var_name = {var_name}")
+        for module in self.ast.findall(".//module"):
+            ff_set = set()
+            for assigndly in module.findall(".//always//assigndly"):
+                lv_node = self.analyzer.get_sig_node(assigndly.getchildren()[1])
+                ff_set.add(lv_node.attrib["name"])
+            for output_var in module.findall(".//var[@dir='output']"):
+                var_name = output_var.attrib["name"]
+                if var_name in ff_set:
+                    flag = True
+                    print(f"  - [Checker Report] warning: found a output reg, var_name = {var_name}, module = {module.attrib['origName']}")
         if not flag:
             print(f"  - [Checker Report] Pass: no output reg.")
         print("-"*80)
 
-
-            
 
     def check_simple_design(self):
         print("#########################################")
