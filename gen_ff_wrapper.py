@@ -52,7 +52,6 @@ class GenFFWrapper(GenWrapper):
                 
         # generate verilog code
         string = f'''
-reg [{CNT_STR_LEN*8-1}:0] {CNT_STR};
 //=============================
 // Dump Fault Free Value
 //=============================
@@ -67,7 +66,6 @@ always@(posedge {CLK}) begin
       $fclose({FFI});
     end
     if({CNT_NAME}>=0)begin
-      cycle2num({CNT_NAME},{CNT_STR});
       {FFI} = $fopen({{"{FFI_DIR}_C",{CNT_STR},".txt"}},"w");
 '''
         for varname in sig_list["ff"]:
@@ -104,7 +102,6 @@ integer {GO};
 always@(posedge {CLK}) begin
   if({RST})begin
     if({CNT_NAME}>0)begin
-      cycle2num({CNT_NAME},{CNT_STR});
       {GO} = $fopen({{"{GO_DIR}_C",{CNT_STR},".txt"}},"w");
 '''
         for varname in sig_list["ff"]:

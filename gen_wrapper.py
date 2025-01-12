@@ -24,15 +24,20 @@ class GenWrapper:
         RST = self.tb_rst_name
         CNT_NAME = self.CNT_NAME
         CNT_WIDTH = self.cnt_width
+        CNT_STR = self.CNT_NAME + "_str"
+        CNT_STR_LEN = self.cnt_str_len
 
         string = f"""
 //=============================
 // Generate Counter
 //=============================
 reg [{CNT_WIDTH-1}:0] {CNT_NAME};
+reg [{CNT_STR_LEN*8-1}:0] {CNT_STR};
+
 always@(posedge {CLK}) begin
   if(!{RST}) {CNT_NAME} <= 0;
-  else            {CNT_NAME} <= {CNT_NAME} + 1;
+  else       {CNT_NAME} <= {CNT_NAME} + 1;
+  cycle2num({CNT_NAME}, {CNT_STR});
 end"""
         print(string)
 

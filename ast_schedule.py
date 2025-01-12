@@ -27,6 +27,9 @@ class AstSchedulePreprocess:
         """
         self.checker.check_simple_design()
 
+        #TODO
+        # split comb always block
+
         self.remover.remove_comment_node()
         self.remover.remove_integer()
         self.remover.remove_empty_initial()
