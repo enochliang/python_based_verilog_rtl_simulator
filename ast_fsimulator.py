@@ -64,7 +64,30 @@ class FaultSimulatorExecute(SimulatorPrepare):
             raise SimulationError("computed value & dumped value mismatch.",6)
 
     def exec_seq_entry(self,node):
+        # sequential left value node to check
+        self.target_node_set = set()
+
         self.exec_seq(node,{})
+
+        if self.check_seq_values():
+            node.tostring()
+            raise SimulationError(f"Py-simulator value mismatcch",0)
+
+
+    def check_seq_values(self):
+        flag = False
+        for target_node in self.target_node_set:
+            if self.check_seq_value(target_node):
+                flag = True
+        self.target_node_set = set()
+        return flag
+
+    def check_seq_value(self,target_node):
+        if target_node.value != target_node.next_value:
+            print(f"Py-simulator value mismatch: signal name = {target_node.name}, final value = {target_node.value}, next value = {target_node.next_value}")
+            return True
+        else:
+            return False
 
 
     #------------------------------------------------------------------------------
@@ -116,19 +139,6 @@ class FaultSimulatorExecute(SimulatorPrepare):
         else:
             raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
 
-    #def exec_seq_false(self,node,ctrl_fault:dict):
-    #    if "assign" in node.tag:
-    #        self.exec_seq_cf_assign(node,ctrl_fault)
-    #    elif node.tag == "if":
-    #        self.exec_seq_false_if(node,ctrl_fault)
-    #    elif node.tag == "case":
-    #        self.exec_seq_false_case(node,ctrl_fault)
-    #    elif node.tag == "begin" or node.tag == "always":
-    #        self.exec_seq_false_block(node,ctrl_fault)
-    #    else:
-    #        raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
-
-
     #----------------------------------------------------------------------------------
     # assignment
     def exec_seq_assign(self,node,ctrl_fault:dict):
@@ -143,18 +153,27 @@ class FaultSimulatorExecute(SimulatorPrepare):
         self.prop_in_fault(right_node)
 
         #origin_value get right value result
-        value = right_node.value
+        value = right_node.ivalue
         width = len(value)
-        self.assign_value(left_node, value, width, 0)
+        if left_node.width > width:
+            value = (left_node.width - width)*"0" + value
+            self.assign_value(node, value, node.width, 0)
+        else:
+            self.assign_value(left_node, value, width, 0)
 
-        # propagate fault to target signal
+        # add left value node for checking
         target_node = self.get_target_node(left_node)
+        self.target_node_set.add(target_node)
+        
+        # propagate fault to target signal
         data_flist = right_node.fault_list
         self.assign_data_fault(target_node,data_flist)
         #self.append_ctrl_fault(target_node)
 
         # selectional control fault
         self.prop_seq_sel_fault(left_node)
+
+
 
     def exec_seq_false_assign(self,node,ctrl_fault:dict):
         pass
@@ -187,27 +206,15 @@ class FaultSimulatorExecute(SimulatorPrepare):
     def exec_comb_false_assign(self,node,ctrl_fault:dict):
         pass
 
-    #def exec_seq_cf_assign(self,node,ctrl_fault:dict):
-    #    left_node = node.lv_node
-
-    #    # visit
-    #    self.compute_out(left_node)
-
-    #    # origin_value get right value result
-    #    self.prop_sel_fault()
-
-    #def exec_comb_cf_assign(self,node,ctrl_fault:dict):
-    #    left_node = node.lv_node
-
-    #    # visit
-    #    self.compute_out(left_node)
-
-    #    # origin_value get right value result
-    #    self.prop_sel_fault()
-
-
     #--------------------------------------------------------------------------------
     def assign_value(self, node, value:str, width:int, start_bit:int = 0):
+        # 
+        if "?" in value:
+            for c in value:
+                if c == "?":
+                    width -= 1
+            value = value[-width:]
+            self.assign_value(node, value, width, start_bit)
         # Assign left value to target signal.
         if node.tag == "sel":
             start_bit = node.children[1].value
@@ -245,7 +252,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # compute for control signal value
         ctrl_node = branch_node.ctrl_node
         self.compute_in(ctrl_node)
-        value = ctrl_node.value
+        value = ctrl_node.ivalue
         return value
 
     # Execute IF Node
@@ -253,21 +260,18 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
+
         # get ctrl fault
         # TODO
         # execute the triggered block
         if "1" in value:
             self.exec_seq(node.true_node,ctrl_fault)
-            if node.false_node == None:
-                pass
-            else:
+            if node.false_node != None:
                 self.exec_seq_false(node.false_node,ctrl_fault)
         else:
-            self.exec_seq_false(node.true_node,ctrl_fault)
-            if node.false_node == None:
-                pass
-            else:
+            if node.false_node != None:
                 self.exec_seq(node.false_node,ctrl_fault)
+            self.exec_seq_false(node.true_node,ctrl_fault)
 
     def exec_seq_false_if(self,node,ctrl_fault:dict):
         # Preparing:
@@ -697,6 +701,7 @@ class FaultSimulator(FaultSimulatorExecute):
 
     def simulate_1_cyc(self,cyc:int):
         self.load_logic_value(cyc)
+        self.load_next_logic_value(cyc+1)
         self.init_fault_list()
         #self.my_ast.show_register_fault_list()
         self.propagate()
@@ -715,8 +720,9 @@ class FaultSimulator(FaultSimulatorExecute):
     def simulate(self):
         self.preprocess()
 
-        start_cyc = 5000
-        for cyc in range(start_cyc,start_cyc+100):
+        start_cyc = 3
+        end_cyc = 485071
+        for cyc in range(start_cyc,end_cyc+1):
             # simulation
             self.simulate_1_cyc(cyc)
 
@@ -742,5 +748,6 @@ if __name__ == "__main__":
         ast = Verilator_AST_Tree(ast_file)
 
         ast_sim = FaultSimulator(ast)
+        #ast_sim.preprocess()
         ast_sim.simulate()
-
+        #ast_sim.simulate_1_cyc(5000)

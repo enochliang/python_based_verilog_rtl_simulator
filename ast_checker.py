@@ -2,7 +2,7 @@ from ast_analyzer import AstAnalyzer
 from lxml import etree
 import pprint 
 import argparse
-from utils import Verilator_AST_Tree
+from utils import *
 
 class Unwanted_Coding_Style(Exception):
     def __init__(self, message, error_code):
@@ -386,6 +386,36 @@ class AstChecker:
             print(f"  - [Checker Report] Pass: no output reg.")
         print("-"*80)
 
+    def _check_const_width(self):
+        print("[Checker Task] start checking constant width notation match the value.")
+        flag = False
+        for const in self.ast.findall(".//const"):
+            ori_value = const.attrib["name"]
+            width = int(ori_value.split("'")[0])
+            value = ori_value.split("'")[1]
+            if "s" in value:
+                radix = value[0:2]
+                value = value[2:]
+            else:
+                radix = value[0]
+                value = value[1:]
+            if (radix == "h" or radix == "sh"):
+                pass
+            elif (radix == "d"):
+                pass
+            elif (radix == "o"):
+                pass
+            elif(radix == "b"):
+                if len(value) != width:
+                    if "assign" not in const.getparent().tag:
+                        print(f"  - [Checker Report] warning: constant width notation doesn't match the value, loc = {const.attrib['loc']}")
+                        flag = True
+            else:
+                print("Error: Unknown Radix!")
+                print(f"    Num = {num}")
+        if not flag:
+            print(f"  - [Checker Report] Pass!")
+        print("-"*80)
 
     def check_simple_design(self):
         print("#########################################")
@@ -394,6 +424,7 @@ class AstChecker:
         self._ast_preprocess()
 
         self._check_circuit_flattened()
+        self._check_const_width()
         self._check_circuit_no_voiddtype()
         self._check_circuit_no_taskref()
         self._check_circuit_no_funcref()

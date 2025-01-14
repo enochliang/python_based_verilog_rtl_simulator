@@ -69,6 +69,30 @@ class SimulatorPrepare(AstNodeClassify):
         for varname, value in logic_value_list:
             var = self.my_ast.var_node(varname)
             var.value = value
+            # debugging
+            var.cur_value = value
+
+
+    def load_next_logic_value_file(self,cycle,width:int=7) -> list:
+        # Fetch logic value dump file at the specific clock cycle
+        target_filename = self.logic_value_file_dir + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
+        print(f"reading file: {target_filename}")
+        f = open(target_filename,"r")
+        logic_value_list = f.readlines()
+        logic_value_list = [value.strip() for value in logic_value_list]
+        f.close()
+        new_logic_value_list = []
+
+        for idx in range(len(self.varname_list)):
+            new_logic_value_list.append( (self.varname_list[idx], logic_value_list[idx]) )
+        return new_logic_value_list
+
+    def load_next_logic_value(self,cycle,width:int=7):
+        logic_value_list = self.load_next_logic_value_file(cycle,width)
+        for varname, value in logic_value_list:
+            var = self.my_ast.var_node(varname)
+            var.next_value = value
+
 
     def init_fault_list(self):
         for node in self.my_ast.register_list:

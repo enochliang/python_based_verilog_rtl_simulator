@@ -350,7 +350,7 @@ def val_negate(v:str) -> str:
 
 def val_1_op(node):
     width = node.width
-    i_value = node.children[0].value
+    i_value = node.children[0].ivalue
     i_value = i_value.replace("z","x")
     if node.tag == "not":
         result = val_not(i_value)
@@ -371,8 +371,8 @@ def val_1_op(node):
 
 def val_2_op(node):
     width = node.width
-    l_value = node.children[0].value
-    r_value = node.children[1].value
+    l_value = node.children[0].ivalue
+    r_value = node.children[1].ivalue
     l_value = l_value.replace("z","x")
     r_value = r_value.replace("z","x")
     if node.tag == "and":
@@ -425,12 +425,12 @@ def val_sel(node):
     #print("start_value = ",node.children[1].node.value,node.children[1].tag)
     #print("width_value = ",node.children[2].node.value,node.children[2].tag)
 
-    if "x" in node.children[1].value:
+    if "x" in node.children[1].ivalue:
         result = "x" * width
     else:
-        var_value = node.children[0].value
-        start_bit = int(node.children[1].value,2)
-        bit_width = int(node.children[2].value,2)
+        var_value = node.children[0].ivalue
+        start_bit = int(node.children[1].ivalue,2)
+        bit_width = int(node.children[2].ivalue,2)
         if start_bit == 0:
             result = var_value[-bit_width:]
         else:
@@ -440,13 +440,13 @@ def val_sel(node):
 
 def val_cond(node):
     width = node.width
-    c_value = node.children[0].value
+    c_value = node.children[0].ivalue
     c_value.replace("z","x")
-    t_value = node.children[1].value
-    f_value = node.children[2].value
+    t_value = node.children[1].ivalue
+    f_value = node.children[2].ivalue
     if c_value == "1":
         result = t_value
-    elif c_value == "0":
+    elif c_value == "0" or c_value == "x":
         result = f_value
     else:
         result = ''

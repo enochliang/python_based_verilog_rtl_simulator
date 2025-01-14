@@ -83,7 +83,10 @@ def vnum2bin(num:str):
             new_num = split_num[1][1:]
             sign = "0"
         if "x" in new_num:
-            return "x"*width
+            if radix == "b" and len(new_num) < width:
+                return (width-len(new_num))*"0"+len(new_num)*"x"
+            else:
+                return "x"*width
         elif "z" in new_num:
             return "z"*width
         else:

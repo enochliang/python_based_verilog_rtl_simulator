@@ -74,7 +74,7 @@ def prob_neq(l_value,r_value,result):
     if result == "0": # if is equal
         return 1.0, 1.0
     else:
-        l_xor_r = val_xor(l_value,r_value)
+        l_xor_r = val_xor(l_value,r_value,len(l_value))
         diff_bit_num = l_xor_r.count("1")
         if diff_bit_num == 1:
             return 1.0/len(l_xor_r), 1.0/len(l_xor_r)

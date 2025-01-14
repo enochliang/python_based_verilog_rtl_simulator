@@ -68,7 +68,6 @@ class AstConstructAddVar(AstConstructBase):
             self.my_ast._map__name_2_varroot[name] = varrootnode
             self.my_ast.root.append(varrootnode)
 
-
     def _append_var_node(self,node):
         width = int(node.attrib["width"])
         name = node.attrib["name"]
@@ -76,6 +75,10 @@ class AstConstructAddVar(AstConstructBase):
         new_var_node = Verilog_AST_Var_Node(width)
         new_var_node.tag = node.tag
         new_var_node.name = name
+        if node.attrib["sig_type"] == "register":
+            new_var_node.attrib["sig_type"] = "register"
+        if node.attrib["sig_type"] == "wire":
+            new_var_node.attrib["sig_type"] = "wire"
 
         for child in node.getchildren():
             new_var_node.append(self._append_var_node(child))
