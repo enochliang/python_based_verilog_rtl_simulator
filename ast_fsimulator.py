@@ -182,11 +182,6 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # selectional control fault
         self.prop_seq_sel_fault(left_node)
 
-
-
-    def exec_seq_false_assign(self,node,ctrl_fault:dict):
-        pass
-
     def exec_comb_assign(self,node,ctrl_fault:dict):
         right_node = node.rv_node
         left_node = node.lv_node
@@ -216,8 +211,33 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # selectional control fault
         self.prop_comb_sel_fault(left_node)
 
+    def exec_seq_false_assign(self,node,ctrl_fault:dict):
+        right_node = node.rv_node
+        left_node = node.lv_node
+
+        # visit
+        self.compute_in(right_node)
+        self.compute_out(left_node)
+
+        # get the target node to propagate fault to.
+        target_node = self.get_target_node(left_node)
+
+        # propagate ctrl fault to target signal
+        self.assign_seq_ctrl_fault(target_node,ctrl_fault)
+
     def exec_comb_false_assign(self,node,ctrl_fault:dict):
-        pass
+        right_node = node.rv_node
+        left_node = node.lv_node
+
+        # visit
+        self.compute_in(right_node)
+        self.compute_out(left_node)
+
+        # get the target node to propagate fault to.
+        target_node = self.get_target_node(left_node)
+
+        # propagate ctrl fault to target signal
+        self.assign_comb_ctrl_fault(target_node,ctrl_fault)
 
     #--------------------------------------------------------------------------------
     def assign_value(self, node, value:str, width:int, start_bit:int = 0):
@@ -318,9 +338,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         if "1" in value:
             self.exec_seq_false(node.true_node,ctrl_fault)
         else:
-            if node.false_node == None:
-                pass
-            else:
+            if node.false_node != None:
                 self.exec_seq_false(node.false_node,ctrl_fault)
 
     def exec_comb_if(self,node,ctrl_fault:dict):
@@ -355,36 +373,60 @@ class FaultSimulatorExecute(SimulatorPrepare):
         if "1" in value:
             self.exec_comb_false(node.true_node,ctrl_fault)
         else:
-            if node.false_node == None:
-                pass
-            else:
+            if node.false_node != None:
                 self.exec_comb_false(node.false_node,ctrl_fault)
 
     #----------------------------------------------
+    def prop_case_cond_fault(self,branch_node):
+        # compute for control signal value
+        ctrl_node = branch_node.ctrl_node
+        self.prop_in_fault(ctrl_node)
+        return ctrl_node.fault_list
+
     # Execute CASE Node
     def exec_seq_case(self,node,ctrl_fault:dict):
         # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
+        
+        # get ctrl fault
+        new_ctrl_fault = dict()
+        cond_ctrl_fault = self.prop_case_cond_fault(node)
+        cur_ctrl_fault = dict()
+
+        # append ctrl fault into new_ctrl_fault
+        self.merge_flist(ctrl_fault, new_ctrl_fault)
+        self.merge_flist(cond_ctrl_fault, cur_ctrl_fault)
+
         # compute for condition signal values
         caseitem_trig_list = []  # stores (trigger flag, caseitem)s
         trigger_flag = False     #
         for child in node.caseitems:
             flag = self.prep_seq_caseitem(child,value)
+
+            # get ctrl fault list from each <caseitem>
+            castitem_flist = self.get_caseitem_flist(child)
+            # append ctrl fault into new_ctrl_fault
+            self.merge_flist(castitem_flist, cur_ctrl_fault)
+
             if flag and not trigger_flag:
                 trigger_flag = flag
                 caseitem_trig_list.append((True,child))
             else:
                 caseitem_trig_list.append((False,child))
+
+        # merge ctrl fault to new_ctrl_fault
+        self.merge_flist(cur_ctrl_fault, new_ctrl_fault)
+
         # Execution:
         # execute the triggered block first
         for trigger, child in caseitem_trig_list:
             if trigger:
-                self.exec_seq_caseitem(child,ctrl_fault)
+                self.exec_seq_caseitem(child,new_ctrl_fault)
         # execute the false blocks
         for trigger, child in caseitem_trig_list:
             if not trigger:
-                self.exec_seq_false_caseitem(child,ctrl_fault)
+                self.exec_seq_false_caseitem(child,cur_ctrl_fault)
 
     def exec_seq_false_case(self,node,ctrl_fault:dict):
         # Preparing:
@@ -395,6 +437,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         trigger_flag = False
         for child in node.caseitems:
             flag = self.prep_seq_caseitem(child,value)
+            
             if flag and not trigger_flag:
                 trigger_flag = flag
                 caseitem_trig_list.append((True,child))
@@ -409,27 +452,48 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
 
     def exec_comb_case(self,node,ctrl_fault:dict):
+        # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
+
+        # get ctrl fault
+        new_ctrl_fault = dict()
+        cond_ctrl_fault = self.prop_case_cond_fault(node)
+        cur_ctrl_fault = dict()
+
+        # append ctrl fault into new_ctrl_fault
+        self.merge_flist(ctrl_fault, new_ctrl_fault)
+        self.merge_flist(cond_ctrl_fault, cur_ctrl_fault)
+
         # compute for condition signal values
         caseitem_trig_list = []
         trigger_flag = False
         for child in node.caseitems:
             flag = self.prep_comb_caseitem(child,value)
+            
+            # get ctrl fault list from each <caseitem>
+            castitem_flist = self.get_caseitem_flist(child)
+            # append ctrl fault into new_ctrl_fault
+            self.merge_flist(castitem_flist, cur_ctrl_fault)
+
             if flag and not trigger_flag:
                 trigger_flag = flag
                 caseitem_trig_list.append((True,child))
             else:
                 caseitem_trig_list.append((False,child))
+
+        # merge ctrl fault to new_ctrl_fault
+        self.merge_flist(cur_ctrl_fault, new_ctrl_fault)
+
         # Execution:
         # execute the triggered block first
         for trigger, child in caseitem_trig_list:
             if trigger:
-                self.exec_comb_caseitem(child,ctrl_fault)
+                self.exec_comb_caseitem(child,new_ctrl_fault)
         # execute the false blocks
         for trigger, child in caseitem_trig_list:
             if not trigger:
-                self.exec_comb_false_caseitem(child,ctrl_fault)
+                self.exec_comb_false_caseitem(child,cur_ctrl_fault)
 
     def exec_comb_false_case(self,node,ctrl_fault:dict):
         # compute for control signal value
@@ -475,6 +539,15 @@ class FaultSimulatorExecute(SimulatorPrepare):
         if len(node.conditions) == 0:
             trigger_flag = True
         return trigger_flag
+
+    def get_caseitem_flist(self,node):
+        new_flist = dict()
+        for cond in node.conditions:
+            self.prop_in_fault(cond)
+            cond_flist = cond.fault_list
+            self.merge_flist(cond_flist, new_flist)
+        return new_flist
+
 
     #----------------------------------------------
     def exec_seq_caseitem(self,node,ctrl_fault:dict):
