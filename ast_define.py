@@ -16,7 +16,7 @@ class Verilog_AST:
 
     def _add_root(self):
         root = Verilog_AST_Node()
-        root.tag == "root"
+        root.tag = "root"
         root._set_tree(self)
         self._root = root
 

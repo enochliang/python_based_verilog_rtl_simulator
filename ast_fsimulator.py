@@ -167,14 +167,17 @@ class FaultSimulatorExecute(SimulatorPrepare):
         else:
             self.assign_value(left_node, value, width, 0)
 
-        # add left value node for checking
+        # get the target node to propagate fault to.
         target_node = self.get_target_node(left_node)
+        # add left value node for checking
         self.target_node_set.add(target_node)
         
-        # propagate fault to target signal
+        # propagate data fault to target signal
         data_flist = right_node.fault_list
         self.assign_data_fault(target_node,data_flist)
-        #self.append_ctrl_fault(target_node)
+
+        # propagate ctrl fault to target signal
+        self.assign_seq_ctrl_fault(target_node,ctrl_fault)
 
         # selectional control fault
         self.prop_seq_sel_fault(left_node)
@@ -200,11 +203,15 @@ class FaultSimulatorExecute(SimulatorPrepare):
         width = len(value)
         self.assign_value(left_node, value, width, 0)
 
-        # propagate fault to target signal
+        # get the target node to propagate fault to.
         target_node = self.get_target_node(left_node)
+
+        # propagate fault to target signal
         data_flist = right_node.fault_list
         self.assign_data_fault(target_node,data_flist)
-        #self.append_ctrl_fault(target_node)
+
+        # propagate ctrl fault to target signal
+        self.assign_comb_ctrl_fault(target_node,ctrl_fault)
 
         # selectional control fault
         self.prop_comb_sel_fault(left_node)
@@ -251,6 +258,16 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     def assign_data_fault(self,node,flist):
         node.fault_list = flist
+
+    def assign_seq_ctrl_fault(self,node,flist:dict):
+        ctrl_flist = dict()
+        for f in flist:
+            ctrl_flist[(f[0],"ctrl")] = flist[f]
+        self.merge_flist(ctrl_flist, node.fault_list)
+
+    def assign_comb_ctrl_fault(self,node,flist:dict):
+        self.merge_flist(flist, node.fault_list)
+
     #--------------------------------------------------------------------------------------
 
     #--------------------------------------------------------------------------------------
@@ -263,6 +280,12 @@ class FaultSimulatorExecute(SimulatorPrepare):
         value = ctrl_node.ivalue
         return value
 
+    def prop_if_cond_fault(self,branch_node):
+        # compute for control signal value
+        ctrl_node = branch_node.ctrl_node
+        self.prop_in_fault(ctrl_node)
+        return ctrl_node.fault_list
+
     # Execute IF Node
     def exec_seq_if(self,node,ctrl_fault:dict):
         # Preparing:
@@ -270,23 +293,27 @@ class FaultSimulatorExecute(SimulatorPrepare):
         value = self.compute_ctrl(node)
 
         # get ctrl fault
+        new_ctrl_fault = dict()
+        cur_ctrl_fault = self.prop_if_cond_fault(node)
+        self.merge_flist(ctrl_fault, new_ctrl_fault)
+        self.merge_flist(cur_ctrl_fault, new_ctrl_fault)
         # TODO
+
         # execute the triggered block
         if "1" in value:
-            self.exec_seq(node.true_node,ctrl_fault)
+            self.exec_seq(node.true_node, new_ctrl_fault)
             if node.false_node != None:
-                self.exec_seq_false(node.false_node,ctrl_fault)
+                self.exec_seq_false(node.false_node, cur_ctrl_fault)
         else:
             if node.false_node != None:
-                self.exec_seq(node.false_node,ctrl_fault)
-            self.exec_seq_false(node.true_node,ctrl_fault)
+                self.exec_seq(node.false_node, new_ctrl_fault)
+            self.exec_seq_false(node.true_node, cur_ctrl_fault)
 
     def exec_seq_false_if(self,node,ctrl_fault:dict):
         # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
-        # get ctrl fault
-        # TODO
+
         # execute the triggered block
         if "1" in value:
             self.exec_seq_false(node.true_node,ctrl_fault)
@@ -301,22 +328,29 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # compute for control signal value
         value = self.compute_ctrl(node)
 
+        # get ctrl fault
+        new_ctrl_fault = dict()
+        cur_ctrl_fault = self.prop_if_cond_fault(node)
+        self.merge_flist(ctrl_fault, new_ctrl_fault)
+        self.merge_flist(cur_ctrl_fault, new_ctrl_fault)
+        # TODO
+
+
         # execute the triggered block, and then execute the false block
         if "1" in value:
-            self.exec_comb(node.true_node, ctrl_fault)
+            self.exec_comb(node.true_node, new_ctrl_fault)
             if node.false_node != None:
-                self.exec_comb_false(node.false_node, ctrl_fault)
+                self.exec_comb_false(node.false_node, cur_ctrl_fault)
         else:
             if node.false_node != None:
-                self.exec_comb(node.false_node, ctrl_fault)
-            self.exec_comb_false(node.true_node, ctrl_fault)
+                self.exec_comb(node.false_node, new_ctrl_fault)
+            self.exec_comb_false(node.true_node, cur_ctrl_fault)
 
     def exec_comb_false_if(self,node,ctrl_fault:dict):
         # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
-        # get ctrl fault
-        # TODO
+
         # execute the triggered block
         if "1" in value:
             self.exec_comb_false(node.true_node,ctrl_fault)
@@ -562,7 +596,15 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     #-----------------------------------------------------
     # Data Write-event fault propagation
-    def merge_flist(self, src_flist, target_flist):
+    def merge_flist(self, src_flist:dict, target_flist:dict):
+        """
+        Arguments:
+          src_flist: "source fault list" that have to be merged into "target fault list"
+          target_flist: pointer of "target fault list"
+
+        Behaviour:
+          target_flist <--merge--- src_flist & target_flist
+        """
         for fault in src_flist:
             prob = src_flist[fault]
             if fault[1] == "stay":
@@ -575,7 +617,16 @@ class FaultSimulatorExecute(SimulatorPrepare):
             else:
                 target_flist[n_fault] = prob
 
-    def merge_prob_flist(self, src_flist, target_flist, scaler:float):
+    def merge_prob_flist(self, src_flist:dict, target_flist:dict, scaler:float):
+        """
+        Arguments:
+          src_flist: "source fault list" that have to be merged into "target fault list"
+          target_flist: pointer of "target fault list"
+          scaler: 
+
+        Behaviour:
+          target_flist <--merge--- src_flist*scaler & target_flist
+        """
         for fault in src_flist:
             prob = src_flist[fault]
             if fault[1] == "stay":
@@ -761,6 +812,6 @@ if __name__ == "__main__":
         ast = Verilator_AST_Tree(ast_file)
 
         ast_sim = FaultSimulator(ast)
-        #ast_sim.preprocess()
         ast_sim.simulate_test()
+        #ast_sim.preprocess()
         #ast_sim.simulate_1_cyc(5000)
