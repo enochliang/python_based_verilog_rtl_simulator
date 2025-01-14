@@ -154,6 +154,7 @@ class AstConstructAddTree(AstConstructAddVar):
             new_node = self._add_ast_circuit_node(node)
         elif node.tag == "case":
             new_node = self._add_ast_case()
+            new_node.attrib["has_default"] = node.attrib["has_default"]
         elif node.tag == "if":
             new_node = self._add_ast_if()
         elif node.tag == "caseitem":

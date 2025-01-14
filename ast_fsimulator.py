@@ -367,8 +367,8 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # compute for control signal value
         value = self.compute_ctrl(node)
         # compute for condition signal values
-        caseitem_trig_list = []
-        trigger_flag = False
+        caseitem_trig_list = []  # stores (trigger flag, caseitem)s
+        trigger_flag = False     #
         for child in node.caseitems:
             flag = self.prep_seq_caseitem(child,value)
             if flag and not trigger_flag:

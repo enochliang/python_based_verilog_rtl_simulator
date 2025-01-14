@@ -42,6 +42,7 @@ class AstSchedulePreprocess:
         self.marker.mark_comb_subcircuit_lv_name()
         self.marker.mark_always_type()
         self.marker.mark_width()
+        self.marker.mark_case_has_default()
 
         self.remover.remove_sentree()
 

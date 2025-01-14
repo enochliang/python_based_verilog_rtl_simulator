@@ -169,6 +169,22 @@ class AstInfoMarker:
                 dtype_id = node.attrib["dtype_id"]
                 node.attrib["width"] = str(dtypeid_2_width_dict[dtype_id])
 
+    def mark_case_has_default(self):
+        for caseblk in self.ast.findall(".//case"):
+            lastblk = caseblk.getchildren()[-1]
+            if lastblk.tag != "caseitem":
+                print(f"  warning: empty case! loc = {caseblk.attrib['loc']}")
+            if len(lastblk.getchildren()) > 0:
+                tag1 = lastblk.getchildren()[0].tag
+                if "assign" in tag1:
+                    caseblk.attrib["has_default"] = "true"
+                    continue
+                elif tag1 in {"if","case"}:
+                    caseblk.attrib["has_default"] = "true"
+                    continue
+            caseblk.attrib["has_default"] = "false"
+
+
 class AstNumberer:
     def __init__(self,ast):
         self.ast = ast
