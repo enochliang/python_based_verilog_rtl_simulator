@@ -52,16 +52,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
     # RTL simulation functions (for simulation entries)
     def exec_comb_entry(self,node):
         lv_name = node.attrib["lv_name"]
-        init_value = self.my_ast.var_node(lv_name).value
         self.exec_comb(node,{})
 
         # check if the calculated result match the dumped one.
-        final_value = self.my_ast.var_node(lv_name).value
-        if "__Vdfg" not in lv_name and init_value != final_value:
-            print(f"lv_name = {lv_name}")
-            print(f"    init_value = {init_value}")
-            print(f"    final_value = {final_value}")
-            raise SimulationError("computed value & dumped value mismatch.",6)
+        self.check_comb_value(lv_name)
 
     def exec_seq_entry(self,node):
         # sequential left value node to check
@@ -69,10 +63,23 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
         self.exec_seq(node,{})
 
+        # check if the calculated result match the dumped one.
         if self.check_seq_values():
             node.tostring()
             raise SimulationError(f"Py-simulator value mismatcch",0)
 
+
+    #------------------------------------------------------------------------------
+    # Computing Result Verification
+    #------------------------------------------------------------------------------
+    def check_comb_value(self,lv_name):
+        init_value = self.my_ast.var_node(lv_name).cur_value
+        final_value = self.my_ast.var_node(lv_name).value
+        if "__Vdfg" not in lv_name and init_value != final_value:
+            print(f"lv_name = {lv_name}")
+            print(f"    init_value = {init_value}")
+            print(f"    final_value = {final_value}")
+            raise SimulationError("computed value & dumped value mismatch.",6)
 
     def check_seq_values(self):
         flag = False
@@ -103,7 +110,6 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.exec_seq_block(node,ctrl_fault)
         else:
             raise SimulationError(f"Unknown node to execute: tag = {node.tag}.",0)
-
     def exec_seq_false(self,node,ctrl_fault:dict):
         if "assign" in node.tag:
             self.exec_seq_false_assign(node,ctrl_fault)
@@ -208,13 +214,14 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     #--------------------------------------------------------------------------------
     def assign_value(self, node, value:str, width:int, start_bit:int = 0):
-        # 
-        if "?" in value:
-            for c in value:
-                if c == "?":
-                    width -= 1
-            value = value[-width:]
-            self.assign_value(node, value, width, start_bit)
+        #<<To Remove>>
+        #if "?" in value:
+        #    for c in value:
+        #        if c == "?":
+        #            width -= 1
+        #    value = value[-width:]
+        #    self.assign_value(node, value, width, start_bit)
+
         # Assign left value to target signal.
         if node.tag == "sel":
             start_bit = node.children[1].value
@@ -244,6 +251,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     def assign_data_fault(self,node,flist):
         node.fault_list = flist
+    #--------------------------------------------------------------------------------------
 
     #--------------------------------------------------------------------------------------
     # Branches in rtl simulation
@@ -292,17 +300,14 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # Preparing:
         # compute for control signal value
         value = self.compute_ctrl(node)
+
         # execute the triggered block, and then execute the false block
         if "1" in value:
             self.exec_comb(node.true_node, ctrl_fault)
-            if node.false_node == None:
-                pass
-            else:
+            if node.false_node != None:
                 self.exec_comb_false(node.false_node, ctrl_fault)
         else:
-            if node.false_node == None:
-                pass
-            else:
+            if node.false_node != None:
                 self.exec_comb(node.false_node, ctrl_fault)
             self.exec_comb_false(node.true_node, ctrl_fault)
 
@@ -725,9 +730,17 @@ class FaultSimulator(FaultSimulatorExecute):
         for cyc in range(start_cyc,end_cyc+1):
             # simulation
             self.simulate_1_cyc(cyc)
-
         self.dump_rw_table()
 
+    def simulate_test(self):
+        self.preprocess()
+
+        start_cyc = 5000
+        end_cyc = 5127
+        for cyc in range(start_cyc,end_cyc+1):
+            # simulation
+            self.simulate_1_cyc(cyc)
+        self.dump_rw_table()
 
 if __name__ == "__main__":
     # Step 1: Create the parser
@@ -749,5 +762,5 @@ if __name__ == "__main__":
 
         ast_sim = FaultSimulator(ast)
         #ast_sim.preprocess()
-        ast_sim.simulate()
+        ast_sim.simulate_test()
         #ast_sim.simulate_1_cyc(5000)

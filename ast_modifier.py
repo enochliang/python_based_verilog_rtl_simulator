@@ -50,7 +50,7 @@ class AstNodeMerger:
         self.remover = AstNodeRemover(self.ast)
         self.analyzer = AstAnalyzer(self.ast)
 
-    def merge_multi_name_var(self):
+    def merge_multi_name_var(self,output=False):
         # Merge the <varref> that have different names but refer to same signal
         # Unify their names
         print("[AST Schedule Preprocess] start merging multi-named signals...")
@@ -76,15 +76,14 @@ class AstNodeMerger:
             else:
                 signal_buckets[bucket_idx].add(v1)
                 signal_buckets[bucket_idx].add(v2)
-        pprint.pp(signal_buckets)
         for i,s in enumerate(signal_buckets):
-            print(s)
             main_signal = [v for v in s if v in all_signal_set][0]
             signal_merge_dict[main_signal] = s
 
         # Merging Node with Same Name
         for main_sig in signal_merge_dict:
-            self._show_merge_info(main_sig,signal_merge_dict[main_sig])
+            if output:
+                self._show_merge_info(main_sig,signal_merge_dict[main_sig])
             for sig in signal_merge_dict[main_sig]:
                 # Remove <varscope>
                 if sig != main_sig:

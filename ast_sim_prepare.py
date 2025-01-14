@@ -50,10 +50,11 @@ class SimulatorPrepare(AstNodeClassify):
             self.varname_list.append(varname)
         f.close()
 
-    def load_logic_value_file(self,cycle,width:int=7) -> list:
+    def load_logic_value_file(self,cycle,width:int=7,output=False) -> list:
         # Fetch logic value dump file at the specific clock cycle
         target_filename = self.logic_value_file_dir + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
-        print(f"reading file: {target_filename}")
+        if output:
+            print(f"reading file for current cycle: {target_filename}")
         f = open(target_filename,"r")
         logic_value_list = f.readlines()
         logic_value_list = [value.strip() for value in logic_value_list]
@@ -73,10 +74,11 @@ class SimulatorPrepare(AstNodeClassify):
             var.cur_value = value
 
 
-    def load_next_logic_value_file(self,cycle,width:int=7) -> list:
+    def load_next_logic_value_file(self,cycle,width:int=7,output=False) -> list:
         # Fetch logic value dump file at the specific clock cycle
         target_filename = self.logic_value_file_dir + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
-        print(f"reading file: {target_filename}")
+        if output:
+            print(f"reading file for next cycle: {target_filename}")
         f = open(target_filename,"r")
         logic_value_list = f.readlines()
         logic_value_list = [value.strip() for value in logic_value_list]
