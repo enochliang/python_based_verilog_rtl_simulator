@@ -99,7 +99,11 @@ class SimulatorPrepare(AstNodeClassify):
     def init_fault_list(self):
         for node in self.my_ast.register_list:
             fault_name = node.name
-            node.fault_list = {(fault_name,"stay"):1.0}
+            width = node.width
+            if node.value == "x"*width:
+                node.fault_list = {}
+            else:
+                node.fault_list = {(fault_name,"stay"):1.0}
 
 
 if __name__ == "__main__":

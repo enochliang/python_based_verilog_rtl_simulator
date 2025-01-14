@@ -885,4 +885,4 @@ if __name__ == "__main__":
         ast_sim = FaultSimulator(ast)
         ast_sim.simulate_test()
         #ast_sim.preprocess()
-        #ast_sim.simulate_1_cyc(5000)
+        #ast_sim.simulate_1_cyc(5127)

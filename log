@@ -1,0 +1,133 @@
+python3 ast_checker.py -f ../picorv32/ast/Vpicorv32_axi.xml
+#####################################################
+# Start parsing [../picorv32/ast/Vpicorv32_axi.xml] #
+#####################################################
+#########################################
+#    Start Checking Simple Design ...   #
+#########################################
+[Checker Task] start checking the ast is flattened...
+  - [Checker Report] warning the ast is not flattened.
+--------------------------------------------------------------------------------
+[Checker Task] start checking constant width notation match the value.
+  - [Checker Report] Pass!
+--------------------------------------------------------------------------------
+[Checker Task] start checking that there are no voiddtype variable in the circuit...
+  - [Checker Report] pass: no voiddtype variable in the circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking that there are no <taskref> in the circuit...
+  - [Checker Report] pass: no <taskref> in the circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking that there are no <funcref> in the circuit...
+  - [Checker Report] pass: no <funcref> in the circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking no loop in the circuit...
+  - [Checker Report] pass: no <while> in the circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking Left Side of Assignment is not a <concat>...
+  - [Checker Report] pass: All Left Values are Single <varref>
+--------------------------------------------------------------------------------
+[Checker Task] start checking each combinational <always> only has 1 Left-Value...
+  - [Checker Report] pass: each comb <always> only has 1 left-value.
+--------------------------------------------------------------------------------
+[Checker Task] start Checking No Blocking Assignment in Clock Triggered Always Block...
+--------------------------------------------------------------------------------
+[Checker Task] start checking <initial> only has 1 <assign>.
+--------------------------------------------------------------------------------
+[Checker Task] start checking no parameter under assignments...
+Pass: No parameter under assignments
+--------------------------------------------------------------------------------
+[Checker Task] start Checking Parameter are all replaced by <const>.
+Pass: No Parameter in the Circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking no output reg in circuit.
+  - [Checker Report] Pass: no output reg.
+--------------------------------------------------------------------------------
+python3 ast_fsimulator.py -f ../picorv32/ast/Vpicorv32_axi_flat.xml
+#########################################
+#    Start Checking Simple Design ...   #
+#########################################
+[Checker Task] start checking the ast is flattened...
+  - [Checker Report] pass!
+--------------------------------------------------------------------------------
+[Checker Task] start checking constant width notation match the value.
+  - [Checker Report] Pass!
+--------------------------------------------------------------------------------
+[Checker Task] start checking that there are no voiddtype variable in the circuit...
+  - [Checker Report] pass: no voiddtype variable in the circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking that there are no <taskref> in the circuit...
+  - [Checker Report] pass: no <taskref> in the circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking that there are no <funcref> in the circuit...
+  - [Checker Report] pass: no <funcref> in the circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking no loop in the circuit...
+  - [Checker Report] pass: no <while> in the circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking Left Side of Assignment is not a <concat>...
+  - [Checker Report] pass: All Left Values are Single <varref>
+--------------------------------------------------------------------------------
+[Checker Task] start checking each combinational <always> only has 1 Left-Value...
+  - [Checker Report] pass: each comb <always> only has 1 left-value.
+--------------------------------------------------------------------------------
+[Checker Task] start Checking No Blocking Assignment in Clock Triggered Always Block...
+--------------------------------------------------------------------------------
+[Checker Task] start checking <initial> only has 1 <assign>.
+--------------------------------------------------------------------------------
+[Checker Task] start checking no parameter under assignments...
+Pass: No parameter under assignments
+--------------------------------------------------------------------------------
+[Checker Task] start Checking Parameter are all replaced by <const>.
+Pass: No Parameter in the Circuit.
+--------------------------------------------------------------------------------
+[Checker Task] start checking no output reg in circuit.
+  - [Checker Report] Pass: no output reg.
+--------------------------------------------------------------------------------
+[AST Schedule Preprocess] start merging multi-named signals...
+--------------------------------------------------------------------------------
+    warning: dtype_id = 41, width = 0
+[AST Schedule Preprocess] start numbering subcircuits...
+  - finished. total number of subcircuit = 129
+--------------------------------------------------------------------------------
+finished. total scheduled subcircuit number = 129
+  Dumped <new_ast_dump.xml>!
+start adding <var> nodes into ast... 
+Total Number of <var> = 311
+Total Number of AST Nodes = 7064
+Total Number of <var> in my ast = 311
+Total Number of subcircuit nodes in my ast = 7064
+  Dumped <new_ast_dump.xml>!
+Dumped Varname Dict.
+  - dumped file = ./sig_list/pysim_sig_table.json
+Dumped Signal Table.
+  - dumped file = ./sig_list/fsim_sig_table.json
+<always loc='e,2680,2,2680,8' >
+  <if loc='e,2681,3,2681,5' >
+    <var name='picorv32_axi.picorv32_core.genblk2.pcpi_div.start' value='0' next_value='0' cur_value='0'>
+    <begin >
+      <assign loc='e,2682,13,2682,15' >
+        <const loc='e,2682,16,2682,17' value='00000000000000000000000000000000' next_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' cur_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'>
+        <var name='picorv32_axi.picorv32_core.genblk2.pcpi_div.quotient' value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' next_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' cur_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'>
+      </assign>
+    </begin>
+    <begin >
+      <if loc='e,2685,4,2685,6' >
+        <lte loc='e,2685,16,2685,18' value='x' next_value='x' cur_value='x'>
+          <var name='picorv32_axi.picorv32_core.genblk2.pcpi_div.divisor' value='000000000000000000000000000000000000000000000000000000000000000' next_value='000000000000000000000000000000000000000000000000000000000000000' cur_value='000000000000000000000000000000000000000000000000000000000000000'>
+          <extend loc='e,2685,19,2685,27' value='0000000000000000000000000000000xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' next_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' cur_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'>
+            <var name='picorv32_axi.picorv32_core.genblk2.pcpi_div.dividend' value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' next_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' cur_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'>
+          </extend>
+        </lte>
+        <begin >
+          <assign loc='e,2686,14,2686,16' >
+            <or loc='e,2686,26,2686,27' value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' next_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' cur_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'>
+              <var name='picorv32_axi.picorv32_core.genblk2.pcpi_div.quotient' value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' next_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' cur_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'>
+              <var name='picorv32_axi.picorv32_core.genblk2.pcpi_div.quotient_msk' value='00000000000000000000000000000000' next_value='00000000000000000000000000000000' cur_value='00000000000000000000000000000000'>
+            </or>
+            <var name='picorv32_axi.picorv32_core.genblk2.pcpi_div.quotient' value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' next_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' cur_value='xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'>
+          </assign>
+        </begin>
+      </if>
+    </begin>
+  </if>
+</always>
