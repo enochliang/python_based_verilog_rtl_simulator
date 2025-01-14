@@ -241,14 +241,6 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     #--------------------------------------------------------------------------------
     def assign_value(self, node, value:str, width:int, start_bit:int = 0):
-        #<<To Remove>>
-        #if "?" in value:
-        #    for c in value:
-        #        if c == "?":
-        #            width -= 1
-        #    value = value[-width:]
-        #    self.assign_value(node, value, width, start_bit)
-
         # Assign left value to target signal.
         if node.tag == "sel":
             start_bit = node.children[1].value
@@ -277,7 +269,13 @@ class FaultSimulatorExecute(SimulatorPrepare):
             raise SimulationError(f"Unknown signal node to assign: tag = {node.tag}.",5)
 
     def assign_data_fault(self,node,flist):
-        node.fault_list = flist
+        data_flist = dict()
+        for f in flist:
+            if f[1] == "stay":
+                data_flist[(f[0],"data")] = flist[f]
+            else:
+                data_flist[f] = flist[f]
+        node.fault_list = data_flist
 
     def assign_seq_ctrl_fault(self,node,flist:dict):
         ctrl_flist = dict()
