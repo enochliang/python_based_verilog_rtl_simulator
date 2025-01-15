@@ -794,6 +794,9 @@ class FaultSimulator(FaultSimulatorExecute):
     def __init__(self,ast):
         FaultSimulatorExecute.__init__(self,ast)
 
+        self.start_cyc = 300000
+        self.end_cyc = 399999
+
         # RW table dictionary
         self.rw_table = {"cycle":[],"rw_event":[]}
 
@@ -846,7 +849,7 @@ class FaultSimulator(FaultSimulatorExecute):
         self.rw_table["rw_event"].append(cur_rw_events)
 
     def dump_rw_table(self):
-        rw_table_dir = "prob_rw_table.csv"
+        rw_table_dir = f"prob_rw_table_{self.start_cyc}-{self.end_cyc}.csv"
         df = pd.DataFrame(self.rw_table)
         df.to_csv(rw_table_dir)
         print(f"Dumped RW-table file: <{rw_table_dir}>")
@@ -855,8 +858,10 @@ class FaultSimulator(FaultSimulatorExecute):
     def simulate(self):
         self.preprocess()
 
-        start_cyc = 3
-        end_cyc = 485071
+        #start_cyc = 3
+        start_cyc = self.start_cyc
+        end_cyc = self.end_cyc
+        #end_cyc = 485071
 
         with tqdm(total=end_cyc-start_cyc+1) as pbar:
             for cyc in range(start_cyc,end_cyc+1):

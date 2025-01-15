@@ -87,6 +87,13 @@ def prob_logand(l_value,r_value,result):
         #TODO
         return 1.0, 1.0
     else:
+        if "1" in r_prob:
+            l_prob = 1.0
+        else:
+
+        if "1" in l_prob:
+            r_prob = 1.0
+        
         #TODO
         return 1.0, 1.0
 
@@ -95,6 +102,14 @@ def prob_logor(l_value,r_value,result):
         return 1.0, 1.0
     else:
         #TODO
+        if "1" not in r_value+l_value:
+            l_prob = 1.0
+        elif "1" not in r_value:
+            pass
+        elif "1" not in l_value:
+            pass
+        else:
+            pass
         return 1.0, 1.0
 
 
