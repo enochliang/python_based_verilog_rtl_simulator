@@ -744,8 +744,8 @@ class FaultSimulatorExecute(SimulatorPrepare):
             pass
         elif node.tag in self.op__2_port:
             l_prob, r_prob = prob_2_op(node)
-            r_flist = node.children[0].node.fault_list
-            l_flist = node.children[1].node.fault_list
+            l_flist = node.children[0].node.fault_list
+            r_flist = node.children[1].node.fault_list
             self.merge_prob_flist(r_flist,new_flist,r_prob)
             self.merge_prob_flist(l_flist,new_flist,l_prob)
         elif node.tag in self.op__1_port:

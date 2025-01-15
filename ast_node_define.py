@@ -62,6 +62,8 @@ class Verilog_AST_Base_Node:
             s += f"loc='{node.attrib['loc']}' "
         if hasattr(self,"_value"):
             s += f"value='{node.value}' next_value='{node.next_value}' cur_value='{node.cur_value}'"
+        if hasattr(self,"_fault_list"):
+            s += f"flist='{node.fault_list}'"
         s += ">"
         print(s)
 

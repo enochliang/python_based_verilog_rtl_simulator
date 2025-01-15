@@ -101,9 +101,7 @@ def prob_logor(l_value,r_value,result):
 def prob_2_op(node):
     result = node.value
     l_value = node.children[0].value
-    l_faultlist = node.children[0].fault_list
     r_value = node.children[1].value
-    r_faultlist = node.children[1].fault_list
     if node.tag == "and":
         return prob_and(l_value,r_value,result)
     elif node.tag == "or":
