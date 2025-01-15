@@ -102,8 +102,10 @@ class SimulatorPrepare(AstNodeClassify):
             width = node.width
             if node.value == "x"*width:
                 node.fault_list = {}
+                node.cur_fault_list = {}
             else:
                 node.fault_list = {(fault_name,"stay"):1.0}
+                node.cur_fault_list = {(fault_name,"stay"):1.0}
 
 
 if __name__ == "__main__":

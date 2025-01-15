@@ -1,5 +1,6 @@
 from ast_sim_prepare import *
 from prob_functions import *
+from tqdm import tqdm
 
 import pandas as pd
 
@@ -61,7 +62,11 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # sequential left value node to check
         self.target_node_set = set()
 
+        #if node.attrib["loc"] == "e,1956,2,1956,8":
+        #    node.tostring()
         self.exec_seq(node,{})
+        #if node.attrib["loc"] == "e,1956,2,1956,8":
+        #    node.tostring()
 
         # check if the calculated result match the dumped one.
         if self.check_seq_values():
@@ -278,13 +283,15 @@ class FaultSimulatorExecute(SimulatorPrepare):
         node.fault_list = data_flist
 
     def assign_seq_ctrl_fault(self,node,flist:dict):
-        ctrl_flist = dict()
-        for f in flist:
-            ctrl_flist[(f[0],"ctrl")] = flist[f]
-        self.merge_flist(ctrl_flist, node.fault_list)
+        if node != None:
+            ctrl_flist = dict()
+            for f in flist:
+                ctrl_flist[(f[0],"ctrl")] = flist[f]
+            self.merge_flist(ctrl_flist, node.fault_list)
 
     def assign_comb_ctrl_fault(self,node,flist:dict):
-        self.merge_flist(flist, node.fault_list)
+        if node != None:
+            self.merge_flist(flist, node.fault_list)
 
     #--------------------------------------------------------------------------------------
 
@@ -715,17 +722,18 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.prop_in_fault(child)
         new_flist = {}
         if node.tag == "varref":
-            src_sig_flist = node.node.fault_list
-            self.merge_flist(src_sig_flist, new_flist)
+            if node.node.tag != "unpackarray":
+                src_sig_flist = node.node.ifault_list
+                self.merge_flist(src_sig_flist, new_flist)
         elif node.tag == "arraysel":
-            src_sig_flist = node.node.fault_list
-            sel_sig_flist = node.children[1].node.fault_list
+            src_sig_flist = node.node.ifault_list
+            sel_sig_flist = node.children[1].node.ifault_list
             self.merge_flist(src_sig_flist, new_flist)
             self.merge_flist(sel_sig_flist, new_flist)
         elif node.tag == "sel":
-            src_sig_flist = node.children[0].node.fault_list
-            bitsel_sig_flist = node.children[1].node.fault_list
-            width_sig_flist = node.children[2].node.fault_list
+            src_sig_flist = node.children[0].node.ifault_list
+            bitsel_sig_flist = node.children[1].node.ifault_list
+            width_sig_flist = node.children[2].node.ifault_list
             self.merge_flist(src_sig_flist, new_flist)
             self.merge_flist(bitsel_sig_flist, new_flist)
             self.merge_flist(width_sig_flist, new_flist)
@@ -733,24 +741,24 @@ class FaultSimulatorExecute(SimulatorPrepare):
             if node.children[0].value == "x":
                 pass
             elif node.children[0].value == "1":
-                src_sig_flist = node.children[1].node.fault_list
+                src_sig_flist = node.children[1].node.ifault_list
                 self.merge_flist(src_sig_flist, new_flist)
             else:
-                src_sig_flist = node.children[2].node.fault_list
+                src_sig_flist = node.children[2].node.ifault_list
                 self.merge_flist(src_sig_flist, new_flist)
-            ctrl_sig_flist = node.children[0].node.fault_list
+            ctrl_sig_flist = node.children[0].node.ifault_list
             self.merge_flist(ctrl_sig_flist, new_flist)
         elif node.tag == "const":
             pass
         elif node.tag in self.op__2_port:
             l_prob, r_prob = prob_2_op(node)
-            l_flist = node.children[0].node.fault_list
-            r_flist = node.children[1].node.fault_list
+            l_flist = node.children[0].node.ifault_list
+            r_flist = node.children[1].node.ifault_list
             self.merge_prob_flist(r_flist,new_flist,r_prob)
             self.merge_prob_flist(l_flist,new_flist,l_prob)
         elif node.tag in self.op__1_port:
             prob = prob_1_op(node)
-            i_flist = node.children[0].node.fault_list
+            i_flist = node.children[0].node.ifault_list
             self.merge_prob_flist(i_flist,new_flist,prob)
         else:
             raise SimulationError(f"Unknown op to compute: tag = {node.tag}.",3)
@@ -849,9 +857,13 @@ class FaultSimulator(FaultSimulatorExecute):
 
         start_cyc = 3
         end_cyc = 485071
-        for cyc in range(start_cyc,end_cyc+1):
-            # simulation
-            self.simulate_1_cyc(cyc)
+
+        with tqdm(total=end_cyc-start_cyc+1) as pbar:
+            for cyc in range(start_cyc,end_cyc+1):
+                # simulation
+                self.simulate_1_cyc(cyc)
+                if cyc%100 == 0:
+                    pbar.update(100)
         self.dump_rw_table()
 
     def simulate_test(self):
@@ -883,6 +895,6 @@ if __name__ == "__main__":
         ast = Verilator_AST_Tree(ast_file)
 
         ast_sim = FaultSimulator(ast)
-        ast_sim.simulate_test()
+        ast_sim.simulate()
         #ast_sim.preprocess()
-        #ast_sim.simulate_1_cyc(5127)
+        #ast_sim.simulate_1_cyc(5000)

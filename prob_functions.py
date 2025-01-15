@@ -35,7 +35,7 @@ def prob_or(l_value,r_value,result):
 
 def prob_shiftl(l_value,r_value,result):
     if "x" in r_value:
-        return 1.0, 1.0
+        return 0.0, 0.0
     else:
         offset = bin_2_signed_int(r_value)
         width = len(result)
@@ -43,7 +43,7 @@ def prob_shiftl(l_value,r_value,result):
 
 def prob_shiftr(l_value,r_value,result):
     if "x" in r_value:
-        return 1.0, 1.0
+        return 0.0, 0.0
     else:
         offset = bin_2_signed_int(r_value)
         width = len(result)
@@ -51,7 +51,7 @@ def prob_shiftr(l_value,r_value,result):
 
 def prob_shiftrs(l_value,r_value,result):
     if "x" in r_value:
-        return 1.0, 1.0
+        return 0.0, 0.0
     else:
         offset = bin_2_signed_int(r_value)
         width = len(result)
@@ -84,6 +84,7 @@ def prob_neq(l_value,r_value,result):
 
 def prob_logand(l_value,r_value,result):
     if result == "1":
+        #TODO
         return 1.0, 1.0
     else:
         #TODO

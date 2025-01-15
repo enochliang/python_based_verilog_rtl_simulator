@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from exceptions import ASTConstructionError
+from exceptions import *
 
 class Verilog_AST_Base_Node:
     def __init__(self):
@@ -176,6 +176,7 @@ class Verilog_AST_Circuit_Node(Verilog_AST_Node):
             self._cur_value = "x"*self._width
         self._signed = False
         self._fault_list = {}
+        self._cur_fault_list = {}
 
 
     @property
@@ -262,6 +263,31 @@ class Verilog_AST_Circuit_Node(Verilog_AST_Node):
     @fault_list.setter
     def fault_list(self,value:list):
         self._fault_list = value
+
+    @property
+    def cur_fault_list(self):
+        target = self.node
+        if target._tag == "var":
+            return target._cur_fault_list
+        else:
+            return target._cur_fault_list
+
+    @cur_fault_list.setter
+    def cur_fault_list(self,value:list):
+        self._cur_fault_list = value
+
+    @property
+    def ifault_list(self):
+        target = self.node
+        if target._tag == "var":
+            if target.attrib["sig_type"] == "register":
+                return target._cur_fault_list
+            else:
+                return target._fault_list
+        elif target._tag == "unpackarray":
+            raise SimulationError(f"Cannot directly access the value of an <unpackarray>",1)
+        else:
+            return target._fault_list
 
 class Verilog_AST_Var_Node(Verilog_AST_Circuit_Node):
     def __init__(self,width:int):
