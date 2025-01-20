@@ -68,7 +68,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         #if node.attrib["loc"] == "e,1956,2,1956,8":
         #    for t in self.target_node_set:
         #        print(t.name, t.value, t.cur_value, t.next_value)
-        #    #node.tostring()
+        #    node.tostring()
 
         # check if the calculated result match the dumped one.
         if self.check_seq_values():
@@ -903,4 +903,4 @@ if __name__ == "__main__":
         ast_sim = FaultSimulator(ast)
         ast_sim.simulate()
         #ast_sim.preprocess()
-        #ast_sim.simulate_1_cyc(300004)
+        #ast_sim.simulate_1_cyc(300013)

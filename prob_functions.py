@@ -131,12 +131,12 @@ def prob_gt(l_value,r_value,result):
         l_prob = float(int(r_value,2))/float(l_max)
         # rv -> (lv <= rv)
         r_top = max(int(l_value,2),r_max)
-        r_prob = float(r_top - int(l_value,2))/float(r_max)
+        r_prob = float(abs(r_top - int(l_value,2)))/float(r_max)
     else:
         # lv <= rv
         # lv -> (lv > rv)
         l_top = max(int(r_value,2),l_max)
-        l_prob = float(l_top - int(r_value,2))/float(l_max)
+        l_prob = float(abs(l_top - int(r_value,2)))/float(l_max)
         # rv -> (lv > rv)
         r_prob = float(int(l_value,2))/float(r_max)
     return l_prob, r_prob
@@ -154,12 +154,12 @@ def prob_gte(l_value,r_value,result):
         l_prob = float(int(r_value,2))/float(l_max)
         # rv -> (lv <= rv)
         r_top = max(int(l_value,2),r_max)
-        r_prob = float(r_top - int(l_value,2))/float(r_max)
+        r_prob = float(abs(r_top - int(l_value,2)))/float(r_max)
     else:
         # lv < rv
         # lv -> (lv >= rv)
         l_top = max(int(r_value,2),l_max)
-        l_prob = float(l_top - int(r_value,2))/float(l_max)
+        l_prob = float(abs(l_top - int(r_value,2)))/float(l_max)
         # rv -> (lv > rv)
         r_prob = float(int(l_value,2))/float(r_max)
     return l_prob, r_prob
@@ -177,12 +177,12 @@ def prob_lte(l_value,r_value,result):
         l_prob = float(int(r_value,2))/float(l_max)
         # rv -> (lv <= rv)
         r_top = max(int(l_value,2),r_max)
-        r_prob = float(r_top - int(l_value,2))/float(r_max)
+        r_prob = float(abs(r_top - int(l_value,2)))/float(r_max)
     else:
         # lv <= rv
         # lv -> (lv > rv)
         l_top = max(int(r_value,2),l_max)
-        l_prob = float(l_top - int(r_value,2))/float(l_max)
+        l_prob = float(abs(l_top - int(r_value,2)))/float(l_max)
         # rv -> (lv > rv)
         r_prob = float(int(l_value,2))/float(r_max)
     return l_prob, r_prob
@@ -200,12 +200,12 @@ def prob_lt(l_value,r_value,result):
         l_prob = float(int(r_value,2))/float(l_max)
         # rv -> (lv <= rv)
         r_top = max(int(l_value,2),r_max)
-        r_prob = float(r_top - int(l_value,2))/float(r_max)
+        r_prob = float(abs(r_top - int(l_value,2)))/float(r_max)
     else:
         # lv < rv
         # lv -> (lv >= rv)
         l_top = max(int(r_value,2),l_max)
-        l_prob = float(l_top - int(r_value,2))/float(l_max)
+        l_prob = float(abs(l_top - int(r_value,2)))/float(l_max)
         # rv -> (lv > rv)
         r_prob = float(int(l_value,2))/float(r_max)
     return l_prob, r_prob
@@ -224,14 +224,14 @@ def prob_lts(l_value,r_value,result):
         r_int = bin_2_signed_int(r_value)
         if l_int < r_int:
             l_top = max(l_max, r_int)
-            l_prob = float(l_top - r_int)/float(2**l_width)
+            l_prob = float(abs(l_top - r_int))/float(2**l_width)
             r_bot = min(r_min, l_int)
-            r_prob = float(l_int - r_bot)/float(2**r_width)
+            r_prob = float(abs(l_int - r_bot))/float(2**r_width)
         else:
             l_bot = min(l_min, r_int)
-            l_prob = float(r_int - l_bot)/float(2**l_width)
+            l_prob = float(abs(r_int - l_bot))/float(2**l_width)
             r_top = max(r_max, l_int)
-            r_prob = float(r_top - l_int)/float(2**r_width)
+            r_prob = float(abs(r_top - l_int))/float(2**r_width)
         return l_prob, r_prob
 
 def prob_2_op(node):
