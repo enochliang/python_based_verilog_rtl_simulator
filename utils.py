@@ -111,6 +111,20 @@ def vnum2bin(num:str):
     new_num = "0"*d + new_num
     return new_num
 
+def bin_2_signed_int(binary_str:str):
+    # Get the bit width from the binary string
+    bit_width = len(binary_str)
+
+    # Convert to integer (unsigned interpretation)
+    unsigned_value = int(binary_str, 2)
+
+    # Check if the number is negative (if the most significant bit is 1)
+    if unsigned_value >= (1 << (bit_width - 1)):  # Compare to 2^(bit_width-1)
+        # Convert to negative value
+        return unsigned_value - (1 << bit_width)
+    else:
+        # It's positive
+        return unsigned_value
 
 def dfs_iter(node):
     children = node.getchildren()

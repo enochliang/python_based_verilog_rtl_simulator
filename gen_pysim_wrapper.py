@@ -46,18 +46,12 @@ class GenPySimFFWrapper(GenWrapper):
 
         string = f"""
 //============================
-// Generate Counter String
-//============================
-reg [{CNT_STR_LEN*8-1}:0] {CNT_STR};
-
-//============================
 // Dump Logic Value for Pysim
 //============================
 integer {FFI};
 always@(posedge {CLK}) begin
   if({RST}) begin
     if(1) begin
-      cycle2num({CNT_NAME},{CNT_STR});
       {FFI} = $fopen({{"{FFI_DIR}_C", {CNT_STR}, ".txt"}}, "w");
 """
         for varname in sig_list:

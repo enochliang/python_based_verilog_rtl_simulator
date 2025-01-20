@@ -66,7 +66,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
         #    node.tostring()
         self.exec_seq(node,{})
         #if node.attrib["loc"] == "e,1956,2,1956,8":
-        #    node.tostring()
+        #    for t in self.target_node_set:
+        #        print(t.name, t.value, t.cur_value, t.next_value)
+        #    #node.tostring()
 
         # check if the calculated result match the dumped one.
         if self.check_seq_values():
@@ -178,7 +180,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         self.target_node_set.add(target_node)
         
         # propagate data fault to target signal
-        data_flist = right_node.fault_list
+        data_flist = right_node.ifault_list
         self.assign_data_fault(target_node,data_flist)
 
         # propagate ctrl fault to target signal
@@ -207,7 +209,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         target_node = self.get_target_node(left_node)
 
         # propagate fault to target signal
-        data_flist = right_node.fault_list
+        data_flist = right_node.ifault_list
         self.assign_data_fault(target_node,data_flist)
 
         # propagate ctrl fault to target signal
@@ -274,13 +276,12 @@ class FaultSimulatorExecute(SimulatorPrepare):
             raise SimulationError(f"Unknown signal node to assign: tag = {node.tag}.",5)
 
     def assign_data_fault(self,node,flist):
-        data_flist = dict()
+        node.fault_list = {}
         for f in flist:
             if f[1] == "stay":
-                data_flist[(f[0],"data")] = flist[f]
+                node.fault_list[(f[0],"data")] = flist[f]
             else:
-                data_flist[f] = flist[f]
-        node.fault_list = data_flist
+                node.fault_list[f] = flist[f]
 
     def assign_seq_ctrl_fault(self,node,flist:dict):
         if node != None:
@@ -795,7 +796,7 @@ class FaultSimulator(FaultSimulatorExecute):
         FaultSimulatorExecute.__init__(self,ast)
 
         self.start_cyc = 300000
-        self.end_cyc = 399999
+        self.end_cyc = 300999
 
         # RW table dictionary
         self.rw_table = {"cycle":[],"rw_event":[]}
@@ -902,4 +903,4 @@ if __name__ == "__main__":
         ast_sim = FaultSimulator(ast)
         ast_sim.simulate()
         #ast_sim.preprocess()
-        #ast_sim.simulate_1_cyc(5000)
+        #ast_sim.simulate_1_cyc(300004)

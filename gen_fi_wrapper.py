@@ -216,6 +216,7 @@ endtask"""
         for sig in self.sig_dict["input"]:
             ff_buf_name = "tb_in2__"+sig.replace("[","__").replace("]","").replace(".","__")
             print(f'  $fscanf({self.INPUT_FP},"%b",{ff_buf_name});')
+        print(f'  $fclose({self.INPUT_FP});')
 
         # load golden buffer
         print(f'  //==============================')
@@ -225,6 +226,7 @@ endtask"""
         for sig in self.sig_dict["ff"]:
             gold_buf_name = "golden_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
             print(f'  $fscanf({self.GOLD_FP},"%b",{gold_buf_name});')
+        print(f'  $fclose({self.GOLD_FP});')
 
         # timing control
         print("  //================")
@@ -241,10 +243,11 @@ endtask"""
         print(f'  //===============================')
         print(f'  // dump fault effect observation')
         print(f'  //===============================')
-        print(f'  {self.OBS_FP} = $fopen({{"{self.OBS_DIR}_C", {self.CNT_NAME}_str, "_R", {self.INJ_ID}_str, "_B", {self.BIT_POS}_str , ".txt"}},"r");')
+        print(f'  {self.OBS_FP} = $fopen({{"{self.OBS_DIR}_C", {self.CNT_NAME}_str, "_R", {self.INJ_ID}_str, "_B", {self.BIT_POS}_str , ".txt"}},"w");')
         for sig in self.sig_dict["ff"]:
             gold_buf_name = "golden_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
             print(f'  $fwrite({self.OBS_FP},"%b\\n", {gold_buf_name} ^ {sig});')
+        print(f'  $fclose({self.OBS_FP});')
         print("end")
 
         print(f'//===============================')
