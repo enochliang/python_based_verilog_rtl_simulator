@@ -61,6 +61,7 @@ class GenFaultList:
                     idx = self.sig_name_2_idx_map[r_event]
                     for bit in range(width):
                         self.ctrl_fault_list.append( (cyc+self.start_cyc, idx, bit) )
+                    continue
 
                 if len(rw_row[r_event]["w"]) == 0:
                     continue
