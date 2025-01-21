@@ -24,7 +24,7 @@ class GenFaultList:
             self.idx_2_sig_name_map[str(idx)] = sig_name
             self.sig_name_2_idx_map[sig_name] = idx
 
-        self.rw_table_file = "prob_rw_table_300000-300999.csv"
+        self.rw_table_file = "prob_rw_table_300000-300249.csv"
         
         self.load_rw_table()
 
@@ -80,7 +80,7 @@ class GenFaultList:
 class FaultInjection(GenFaultList):
     def __init__(self,_sig_dict:dict):
         GenFaultList.__init__(self,_sig_dict)
-        self.fsim_exe_file = "./fi_sim_veri"
+        self.fsim_exe_file = "./fi_sim_veri > log &"
 
     def run_all_fault_sim(self):
 
@@ -101,6 +101,7 @@ class FaultInjection(GenFaultList):
         tot = len(self.data_fault_list)
         cnt = 0
         
+        print("[Progress] running fault injection...")
         with tqdm(total=tot) as pbar:
             for fi_case in self.data_fault_list:
                 f = open("control.txt","w")
@@ -120,38 +121,46 @@ class FaultInjection(GenFaultList):
         dst_bit_col = []
         faulty_effect_class_col = []
         
-        print("observing fault injection result...")
-        for fi_case in self.data_fault_list:
-            # Read faulty bit
-            f = open(f"result/result_C{fi_case[0]:07}_R{fi_case[1]:04}_B{fi_case[2]:04}.txt","r")
-            faulty_values = f.read().split("\n")
-            f.close()
-            # Read golden value for unknown elimination
-            f = open(f"golden_value/golden_value_C{fi_case[0]:07}.txt")
-            golden_values = f.read().split("\n")
-            f.close()
+        print("[Progress] observing fault injection result...")
+        tot = len(self.data_fault_list)
+        cnt = 0
+        with tqdm(total=tot) as pbar:
+            for fi_case in self.data_fault_list:
+                # Read faulty bit
+                f = open(f"result/result_C{fi_case[0]:07}_R{fi_case[1]:04}_B{fi_case[2]:04}.txt","r")
+                faulty_values = f.read().split("\n")
+                f.close()
+                # Read golden value for unknown elimination
+                f = open(f"golden_value/golden_value_C{fi_case[0]:07}.txt")
+                golden_values = f.read().split("\n")
+                f.close()
 
-            src_reg_name = self.idx_2_sig_name_map[str(fi_case[1])]
-            dst_reg_list = []
-            for idx,sig_name in enumerate(self.sig_dict["ff"]):
-                width = len(faulty_values[idx])
-                if len(faulty_values[idx]) != int(self.sig_dict["ff"][sig_name]):
-                    raise RTLFSimulationError("Error: Width Not Match.",1)
+                src_reg_name = self.idx_2_sig_name_map[str(fi_case[1])]
+                dst_reg_list = []
+                for idx,sig_name in enumerate(self.sig_dict["ff"]):
+                    width = len(faulty_values[idx])
+                    if len(faulty_values[idx]) != int(self.sig_dict["ff"][sig_name]):
+                        raise RTLFSimulationError("Error: Width Not Match.",1)
+                    else:
+                        for c_idx in range(width):
+                            if golden_values[idx][width-1-c_idx] == "x":
+                                continue
+                            if faulty_values[idx][width-1-c_idx] == "1":
+                                dst_reg_list.append(f"{sig_name}[{c_idx}]")
+                clock_cyc_col.append(fi_case[0])
+                src_bit_col.append(f"{src_reg_name}[{fi_case[2]}]")
+                dst_bit_col.append(dst_reg_list)
+                if dst_reg_list == []:
+                    faulty_effect_class_col.append("masked")
+                elif len(dst_reg_list) == 1:
+                    faulty_effect_class_col.append("single")
                 else:
-                    for c_idx in range(width):
-                        if golden_values[idx][width-1-c_idx] == "x":
-                            continue
-                        if faulty_values[idx][width-1-c_idx] == "1":
-                            dst_reg_list.append(f"{sig_name}[{c_idx}]")
-            clock_cyc_col.append(fi_case[0])
-            src_bit_col.append(f"{src_reg_name}[{fi_case[2]}]")
-            dst_bit_col.append(dst_reg_list)
-            if dst_reg_list == []:
-                faulty_effect_class_col.append("masked")
-            elif len(dst_reg_list) == 1:
-                faulty_effect_class_col.append("single")
-            else:
-                faulty_effect_class_col.append("multiple")
+                    faulty_effect_class_col.append("multiple")
+
+                cnt += 1
+                if cnt % 100 == 0:
+                    pbar.update(100)
+
 
         df = pd.DataFrame({"cycle":clock_cyc_col,"src_bit":src_bit_col,"dst_bit":dst_bit_col,"fault_effect":faulty_effect_class_col})
         df.to_csv(f"fault_sim_result(data).csv")
@@ -196,8 +205,7 @@ if __name__ == "__main__":
     sig_dict = json.load(f)
     f.close()
     inj = FaultInjection(sig_dict)
-    inj._get_ace_fault_list()
-    inj.result_data_stat()
+    inj.run_data_fault_sim()
 
     #gen = GenFaultList(sig_dict)
     #gen.setup()

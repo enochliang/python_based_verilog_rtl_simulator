@@ -62,12 +62,12 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # sequential left value node to check
         self.target_node_set = set()
 
-        #if node.attrib["loc"] == "e,1956,2,1956,8":
+        #if node.attrib["loc"] == "e,2690,2,2690,8":
         #    node.tostring()
         self.exec_seq(node,{})
-        #if node.attrib["loc"] == "e,1956,2,1956,8":
-        #    for t in self.target_node_set:
-        #        print(t.name, t.value, t.cur_value, t.next_value)
+        #if node.attrib["loc"] == "e,2690,2,2690,8":
+            #for t in self.target_node_set:
+            #    print(t.name, t.value, t.cur_value, t.next_value)
         #    node.tostring()
 
         # check if the calculated result match the dumped one.
@@ -310,7 +310,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # compute for control signal value
         ctrl_node = branch_node.ctrl_node
         self.prop_in_fault(ctrl_node)
-        return ctrl_node.fault_list
+        return ctrl_node.ifault_list
 
     # Execute IF Node
     def exec_seq_if(self,node,ctrl_fault:dict):
@@ -387,7 +387,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         # compute for control signal value
         ctrl_node = branch_node.ctrl_node
         self.prop_in_fault(ctrl_node)
-        return ctrl_node.fault_list
+        return ctrl_node.ifault_list
 
     # Execute CASE Node
     def exec_seq_case(self,node,ctrl_fault:dict):
@@ -550,7 +550,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
         new_flist = dict()
         for cond in node.conditions:
             self.prop_in_fault(cond)
-            cond_flist = cond.fault_list
+            cond_flist = cond.ifault_list
             self.merge_flist(cond_flist, new_flist)
         return new_flist
 
@@ -739,9 +739,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
             self.merge_flist(bitsel_sig_flist, new_flist)
             self.merge_flist(width_sig_flist, new_flist)
         elif node.tag == "cond":
-            if node.children[0].value == "x":
-                pass
-            elif node.children[0].value == "1":
+            if node.children[0].ivalue == "1":
                 src_sig_flist = node.children[1].node.ifault_list
                 self.merge_flist(src_sig_flist, new_flist)
             else:
@@ -796,7 +794,7 @@ class FaultSimulator(FaultSimulatorExecute):
         FaultSimulatorExecute.__init__(self,ast)
 
         self.start_cyc = 300000
-        self.end_cyc = 300999
+        self.end_cyc = 300249
 
         # RW table dictionary
         self.rw_table = {"cycle":[],"rw_event":[]}
@@ -903,4 +901,4 @@ if __name__ == "__main__":
         ast_sim = FaultSimulator(ast)
         ast_sim.simulate()
         #ast_sim.preprocess()
-        #ast_sim.simulate_1_cyc(300013)
+        #ast_sim.simulate_1_cyc(300000)

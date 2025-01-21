@@ -1,6 +1,7 @@
 from rtl_functions import *
 from num_convert import *
 from utils import * 
+import math
 
 
 def f_prop(l_f_list:dict,r_f_list:dict):
@@ -38,25 +39,28 @@ def prob_shiftl(l_value,r_value,result):
     if "x" in r_value:
         return 0.0, 0.0
     else:
-        offset = bin_2_signed_int(r_value)
+        offset = int(r_value,2)
         width = len(result)
-        return float(offset - width)/float(width), 1.0
+        m = max(width - offset, 0)
+        return float(m)/float(width), 1.0
 
 def prob_shiftr(l_value,r_value,result):
     if "x" in r_value:
         return 0.0, 0.0
     else:
-        offset = bin_2_signed_int(r_value)
+        offset = int(r_value,2)
         width = len(result)
-        return float(offset - width)/float(width), 1.0
+        m = max(width - offset, 0)
+        return float(m)/float(width), 1.0
 
 def prob_shiftrs(l_value,r_value,result):
     if "x" in r_value:
         return 0.0, 0.0
     else:
-        offset = bin_2_signed_int(r_value)
+        offset = int(r_value,2)
         width = len(result)
-        return float(offset - width)/float(width), 1.0
+        m = max(width - offset, 0)
+        return float(m)/float(width), 1.0
 
 def prob_eq(l_value,r_value,result):
     if result == "1": # if is equal
