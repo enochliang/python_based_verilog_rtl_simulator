@@ -772,15 +772,6 @@ class FaultSimulatorExecute(SimulatorPrepare):
         pass
 
     #----------------------------------------------------
-    def fault_write(self,node):
-        pass
-
-    def fault_append(self,node):
-        pass
-    
-    def fault_prop(self, target_fault_list ):
-        pass
-    
     def get_target_node(self,node):
         if node.tag == "sel":
             return node.children[0].node
@@ -795,6 +786,9 @@ class FaultSimulator(FaultSimulatorExecute):
 
         self.start_cyc = 300000
         self.end_cyc = 300249
+        self.min_cyc = 3
+        self.max_cyc = 485071
+        self.period = 2048
 
         # RW table dictionary
         self.rw_table = {"cycle":[],"rw_event":[]}
@@ -836,7 +830,7 @@ class FaultSimulator(FaultSimulatorExecute):
             cur_rw_events.append(event)
         return cur_rw_events
 
-    def simulate_1_cyc(self,cyc:int):
+    def sim_1_cyc(self,cyc:int):
         self.load_logic_value(cyc)
         self.load_next_logic_value(cyc+1)
         self.init_fault_list()
@@ -847,14 +841,29 @@ class FaultSimulator(FaultSimulatorExecute):
         self.rw_table["cycle"].append(cyc)
         self.rw_table["rw_event"].append(cur_rw_events)
 
-    def dump_rw_table(self):
-        rw_table_dir = f"prob_rw_table_{self.start_cyc}-{self.end_cyc}.csv"
+    def dump_rw_table(self,mode:str):
+        if mode == "period":
+            rw_table_dir = f"prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv"
+        elif mode == "start-end":
+            rw_table_dir = f"prob_rw_table_{self.start_cyc}-{self.end_cyc}.csv"
+        else:
+            print("Unknown simulation mode")
         df = pd.DataFrame(self.rw_table)
         df.to_csv(rw_table_dir)
         print(f"Dumped RW-table file: <{rw_table_dir}>")
 
+    def simulate(self, mode:str):
+        if mode == "period":
+            self.sim_period()
+        elif mode == "start-end":
+            self.sim_start2end()
+        elif mode == "one_cycle":
+            self.sim_1_cyc()
+        else:
+            print("Unknown simulation mode")
 
-    def simulate(self):
+
+    def sim_start2end(self):
         self.preprocess()
 
         #start_cyc = 3
@@ -865,20 +874,34 @@ class FaultSimulator(FaultSimulatorExecute):
         with tqdm(total=end_cyc-start_cyc+1) as pbar:
             for cyc in range(start_cyc,end_cyc+1):
                 # simulation
-                self.simulate_1_cyc(cyc)
+                self.sim_1_cyc(cyc)
                 if cyc%100 == 0:
                     pbar.update(100)
-        self.dump_rw_table()
+        self.dump_rw_table(mode="start-end")
 
-    def simulate_test(self):
+    def sim_period(self):
         self.preprocess()
 
-        start_cyc = 5000
-        end_cyc = 5127
-        for cyc in range(start_cyc,end_cyc+1):
-            # simulation
-            self.simulate_1_cyc(cyc)
-        self.dump_rw_table()
+        start_cyc = self.start_cyc
+        end_cyc = self.start_cyc + self.period - 1
+
+        with tqdm(total=end_cyc-start_cyc+1) as pbar:
+            for cyc in range(start_cyc,end_cyc+1):
+                # simulation
+                self.sim_1_cyc(cyc)
+                if cyc%100 == 0:
+                    pbar.update(100)
+        self.dump_rw_table(mode="period")
+
+    #def simulate_test(self):
+    #    self.preprocess()
+
+    #    start_cyc = 5000
+    #    end_cyc = 5127
+    #    for cyc in range(start_cyc,end_cyc+1):
+    #        # simulation
+    #        self.sim_1_cyc(cyc)
+    #    self.dump_rw_table()
 
 if __name__ == "__main__":
     # Step 1: Create the parser
@@ -899,6 +922,6 @@ if __name__ == "__main__":
         ast = Verilator_AST_Tree(ast_file)
 
         ast_sim = FaultSimulator(ast)
-        ast_sim.simulate()
+        ast_sim.simulate(mode="period")
         #ast_sim.preprocess()
-        #ast_sim.simulate_1_cyc(300000)
+        #ast_sim.sim_1_cyc(300000)
