@@ -48,6 +48,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
     def __init__(self,ast):
         SimulatorPrepare.__init__(self,ast)
 
+        # Turn on if you want to reduce ctrl faults
+        self.ctrl_fr_flag = True
+
 
     #-----------------------------------------------------------------------------
     # RTL simulation functions (for simulation entries)
@@ -154,6 +157,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
     #----------------------------------------------------------------------------------
     # assignment
+    #----------------------------------------------------------------------------------
     def exec_seq_assign(self,node,ctrl_fault:dict):
         right_node = node.rv_node
         left_node = node.lv_node
@@ -184,7 +188,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
         self.assign_data_fault(target_node,data_flist)
 
         # propagate ctrl fault to target signal
-        self.assign_seq_ctrl_fault(target_node,ctrl_fault)
+        cur_value = target_node.cur_value
+        next_value = target_node.next_value
+        if not self.ctrl_fr_flag or (cur_value != next_value):
+            self.assign_seq_ctrl_fault(target_node,ctrl_fault)
 
         # selectional control fault
         self.prop_seq_sel_fault(left_node)
@@ -213,7 +220,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
         self.assign_data_fault(target_node,data_flist)
 
         # propagate ctrl fault to target signal
-        self.assign_comb_ctrl_fault(target_node,ctrl_fault)
+        r_value = right_node.ivalue
+        sim_value = self.get_o_node_value(left_node)
+        if not self.ctrl_fr_flag or (sim_value != r_value):
+            self.assign_comb_ctrl_fault(target_node,ctrl_fault)
 
         # selectional control fault
         self.prop_comb_sel_fault(left_node)
@@ -230,7 +240,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
         target_node = self.get_target_node(left_node)
 
         # propagate ctrl fault to target signal
-        self.assign_seq_ctrl_fault(target_node,ctrl_fault)
+        r_value = right_node.ivalue
+        l_value = self.get_o_node_next_value(left_node)
+        if not self.ctrl_fr_flag or (r_value != l_value):
+            self.assign_seq_ctrl_fault(target_node,ctrl_fault)
 
     def exec_comb_false_assign(self,node,ctrl_fault:dict):
         right_node = node.rv_node
@@ -244,7 +257,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
         target_node = self.get_target_node(left_node)
 
         # propagate ctrl fault to target signal
-        self.assign_comb_ctrl_fault(target_node,ctrl_fault)
+        r_value = right_node.ivalue
+        l_value = self.get_o_node_cur_value(left_node)
+        if not self.ctrl_fr_flag or (r_value != l_value):
+            self.assign_comb_ctrl_fault(target_node,ctrl_fault)
 
     #--------------------------------------------------------------------------------
     def assign_value(self, node, value:str, width:int, start_bit:int = 0):
@@ -777,6 +793,44 @@ class FaultSimulatorExecute(SimulatorPrepare):
             return node.children[0].node
         else:
             return node.node
+
+
+    def get_o_node_value(self,node) -> str:
+        if node.tag == "sel":
+            value = self.get_o_node_cur_value(node.children[0])
+            start_bit = int(node.children[1].value,2)
+            width = int(node.children[2].value,2)
+            if start_bit == 0:
+                return value[-start_bit-width:]
+            else:
+                return value[-start_bit-width:-start_bit]
+        else:
+            return node.value
+
+    def get_o_node_next_value(self,node) -> str:
+        if node.tag == "sel":
+            value = self.get_o_node_cur_value(node.children[0])
+            start_bit = int(node.children[1].value,2)
+            width = int(node.children[2].value,2)
+            if start_bit == 0:
+                return value[-start_bit-width:]
+            else:
+                return value[-start_bit-width:-start_bit]
+        else:
+            return node.next_value
+        
+
+    def get_o_node_cur_value(self,node) -> str:
+        if node.tag == "sel":
+            value = self.get_o_node_cur_value(node.children[0])
+            start_bit = int(node.children[1].value,2)
+            width = int(node.children[2].value,2)
+            if start_bit == 0:
+                return value[-start_bit-width:]
+            else:
+                return value[-start_bit-width:-start_bit]
+        else:
+            return node.cur_value
 
 
 

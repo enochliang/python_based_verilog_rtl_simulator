@@ -24,7 +24,7 @@ class GenFaultList:
             self.idx_2_sig_name_map[str(idx)] = sig_name
             self.sig_name_2_idx_map[sig_name] = idx
 
-        self.rw_table_file = "prob_rw_table_300000-300249.csv"
+        self.rw_table_file = "prob_rw_table_300000-302047.csv"
         
         self.load_rw_table()
 
