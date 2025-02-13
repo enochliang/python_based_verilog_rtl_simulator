@@ -976,6 +976,5 @@ if __name__ == "__main__":
         ast = Verilator_AST_Tree(ast_file)
 
         ast_sim = FaultSimulator(ast)
-        ast_sim.simulate(mode="period")
-        #ast_sim.preprocess()
-        #ast_sim.sim_1_cyc(300000)
+        # parameter
+        ast_sim.simulate(mode="period", start_cyc=205000, period=2048)
