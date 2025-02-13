@@ -1,8 +1,9 @@
 PYTHON := python3
 
-DESIGN_DIR := ../../ #(changable)
-AST_XML := $(DESIGN_DIR)/ast/Vpicorv32_axi.xml
-AST_XML_flat := $(DESIGN_DIR)/ast/Vpicorv32_axi_flat.xml
+DESIGN_DIR := ../..
+TOP_MODULE_NAME := picorv32
+AST_XML := $(DESIGN_DIR)/ast/V$(TOP_MODULE_NAME).xml
+AST_XML_flat := $(DESIGN_DIR)/ast/V$(TOP_MODULE_NAME)_flat.xml
 
 #=============================
 # AST Generation
@@ -26,6 +27,7 @@ check_flat: ast_checker.py $(AST_XML_flat)
 # Preprocess & Signal Table Generation
 #======================================
 preprocess: check
+	mkdir -p sig_list
 	$(PYTHON) ast_sim_prepare.py -f $(AST_XML_flat)
 
 sig_list/pysim_sig_table.json:
