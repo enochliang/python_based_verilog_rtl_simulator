@@ -996,4 +996,4 @@ if __name__ == "__main__":
 
         # parameter
         ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
-        ast_sim.simulate(mode="period", start_cyc=205000, period=2048)
+        ast_sim.simulate(mode="period")
