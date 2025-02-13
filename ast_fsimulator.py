@@ -900,6 +900,8 @@ class FaultSimulator(FaultSimulatorExecute):
             rw_table_dir = f"prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv"
         elif mode == "start-end":
             rw_table_dir = f"prob_rw_table_{self.start_cyc}-{self.end_cyc}.csv"
+        elif mode == "full":
+            rw_table_dir = f"prob_rw_table_{self.min_cyc}-{self.max_cyc}.csv"
         else:
             print("Unknown simulation mode")
         df = pd.DataFrame(self.rw_table)
@@ -913,9 +915,26 @@ class FaultSimulator(FaultSimulatorExecute):
             self.sim_start2end()
         elif mode == "one_cycle":
             self.sim_1_cyc()
+        elif mode == "full":
+            self.sim_full()
         else:
             print("Unknown simulation mode")
 
+    def sim_full(self):
+        self.preprocess()
+
+        #start_cyc = 3
+        start_cyc = self.min_cyc
+        end_cyc = self.max_cyc
+        #end_cyc = 485071
+
+        with tqdm(total=end_cyc-start_cyc+1) as pbar:
+            for cyc in range(start_cyc,end_cyc+1):
+                # simulation
+                self.sim_1_cyc(cyc)
+                if cyc%100 == 0:
+                    pbar.update(100)
+        self.dump_rw_table(mode="start-end")
 
     def sim_start2end(self):
         self.preprocess()
@@ -975,6 +994,6 @@ if __name__ == "__main__":
         ast_file = args.file
         ast = Verilator_AST_Tree(ast_file)
 
-        ast_sim = FaultSimulator(ast)
         # parameter
+        ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
         ast_sim.simulate(mode="period", start_cyc=205000, period=2048)
