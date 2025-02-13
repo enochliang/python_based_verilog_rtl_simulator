@@ -835,14 +835,14 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
 
 class FaultSimulator(FaultSimulatorExecute):
-    def __init__(self,ast):
+    def __init__(self,ast,start_cyc:int=0,period:int=64):
         FaultSimulatorExecute.__init__(self,ast)
 
-        self.start_cyc = 300000
+        self.start_cyc = start_cyc
         self.end_cyc = 300249
         self.min_cyc = 3
         self.max_cyc = 485071
-        self.period = 2048
+        self.period = period
 
         # RW table dictionary
         self.rw_table = {"cycle":[],"rw_event":[]}
