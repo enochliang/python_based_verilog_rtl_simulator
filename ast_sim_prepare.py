@@ -30,7 +30,7 @@ class SimulatorPrepare(AstNodeClassify):
         self.pysim_sig_dumper = AstDumpPySimSigTable(self.ast)
 
         # TODO
-        self.logic_value_file_dir = "../picorv32/pysim_ff_value/"
+        self.logic_value_file_dir = "../../pysim_ff_value/"
         self.logic_value_file_head = "ff_value_C"
         self.logic_value_file_tail = ".txt"
 

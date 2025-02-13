@@ -835,13 +835,13 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
 
 class FaultSimulator(FaultSimulatorExecute):
-    def __init__(self,ast,start_cyc:int=0,period:int=64):
+    def __init__(self,ast,start_cyc:int=0,end_cyc:int=1,period:int=64,min_cyc:int=0,max_cyc:int=1):
         FaultSimulatorExecute.__init__(self,ast)
 
         self.start_cyc = start_cyc
-        self.end_cyc = 300249
-        self.min_cyc = 3
-        self.max_cyc = 485071
+        self.end_cyc = end_cyc
+        self.min_cyc = min_cyc
+        self.max_cyc = max_cyc
         self.period = period
 
         # RW table dictionary
@@ -995,5 +995,6 @@ if __name__ == "__main__":
         ast = Verilator_AST_Tree(ast_file)
 
         # parameter
-        ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
-        ast_sim.simulate(mode="period")
+        #ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
+        ast_sim = FaultSimulator(ast, min_cyc=5, max_cyc=89875)
+        ast_sim.simulate(mode="full")
