@@ -1,6 +1,6 @@
 PYTHON := python3
 
-DESIGN_DIR := ../picorv32
+DESIGN_DIR := ../../
 AST_XML := $(DESIGN_DIR)/ast/Vpicorv32_axi.xml
 AST_XML_flat := $(DESIGN_DIR)/ast/Vpicorv32_axi_flat.xml
 
@@ -8,11 +8,11 @@ AST_XML_flat := $(DESIGN_DIR)/ast/Vpicorv32_axi_flat.xml
 rtl:
 	cd $(DESIGN_DIR) && cp rtl/picorv32_modified.v picorv32.v && cp rtl/testbench_modified.v testbench.v
 
-$(AST_XML): $(DESIGN_DIR)/*.v
+$(AST_XML): xml.vc
 	cd $(DESIGN_DIR) && cp rtl/picorv32_modified.v picorv32.v && cp rtl/testbench_modified.v testbench.v
 	cd $(DESIGN_DIR) && verilator -f xml.vc
 
-$(AST_XML_flat): $(DESIGN_DIR)/*.v
+$(AST_XML_flat): xml_flat.vc
 	cd $(DESIGN_DIR) && cp rtl/picorv32_modified.v picorv32.v && cp rtl/testbench_modified.v testbench.v
 	cd $(DESIGN_DIR) && verilator -f xml_flat.vc
 
