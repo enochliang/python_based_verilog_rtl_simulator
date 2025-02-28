@@ -106,7 +106,10 @@ def val_shiftr(lv:str,rv:str,width:int):
         result = "x"*width
     else:
         offset = int(rv,2)
-        result = "0"*offset + lv[:-(offset)]
+        if offset == 0:
+            result = lv
+        else:
+            result = "0"*offset + lv[:-(offset)]
     return result
 
 def val_shiftrs(lv:str,rv:str,width:int):
@@ -449,8 +452,14 @@ def val_cond(node):
     f_value = node.children[2].ivalue
     if c_value == "1":
         result = t_value
-    elif c_value == "0" or c_value == "x":
+    elif c_value == "0":
         result = f_value
+    elif c_value == "x":
+        # Depends on RTL simulator
+        #   for verilator & iverilog
+        result = f_value
+        #   for VCS
+        result = t_value
     else:
         result = ''
         for idx in range(width):
