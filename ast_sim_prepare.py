@@ -23,11 +23,6 @@ class SimulatorPrepare(AstNodeClassify):
         # dump ast to xml file
         self.ast_dumper = AstDump(self.ast)
 
-        # dump wrapper sig list
-        self.fsim_sig_dumper = AstDumpFsimSigTable(self.ast)
-
-        # dump simulator sig list
-        self.pysim_sig_dumper = AstDumpPySimSigTable(self.ast)
 
         # TODO
         self.logic_value_file_dir = "../../pysim_ff_value/"
@@ -38,9 +33,7 @@ class SimulatorPrepare(AstNodeClassify):
         self.ast_duplicator.duplicate()
         self.my_ast = self.ast_duplicator.my_ast
 
-        self.ast_dumper.dump()
-        self.pysim_sig_dumper.dump_sig_dict()
-        self.fsim_sig_dumper.dump_sig_dict()
+        #self.ast_dumper.dump()
         self.load_ordered_varname()
 
     def load_ordered_varname(self):

@@ -259,6 +259,7 @@ def val_gtes(lv:str,rv:str):
         return "0"
     else:
         return "1"
+
 def val_ltes(lv:str,rv:str):
     gts = val_gts(lv,rv)
     if gts == "x":
@@ -401,6 +402,8 @@ def val_2_op(node):
         result = val_gt(l_value,r_value)
     elif node.tag == "gte":
         result = val_gte(l_value,r_value)
+    elif node.tag == "gtes":
+        result = val_gtes(l_value,r_value)
     elif node.tag == "lte":
         result = val_lte(l_value,r_value)
     elif node.tag == "lt":

@@ -835,7 +835,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
 
 class FaultSimulator(FaultSimulatorExecute):
-    def __init__(self,ast,start_cyc:int=0,end_cyc:int=1,period:int=64,min_cyc:int=0,max_cyc:int=1):
+    def __init__(self, ast, start_cyc:int=0, end_cyc:int=1, period:int=64, min_cyc:int=0, max_cyc:int=1, logic_val_dir:str=""):
         FaultSimulatorExecute.__init__(self,ast)
 
         self.start_cyc = start_cyc
@@ -846,6 +846,8 @@ class FaultSimulator(FaultSimulatorExecute):
 
         # RW table dictionary
         self.rw_table = {"cycle":[],"rw_event":[]}
+
+        self.logic_value_file_dir = logic_val_dir
 
     def propagate(self):
         for subcircuit_id in self.my_ast.ordered_subcircuit_id_head:
@@ -934,7 +936,7 @@ class FaultSimulator(FaultSimulatorExecute):
                 self.sim_1_cyc(cyc)
                 if cyc%100 == 0:
                     pbar.update(100)
-        self.dump_rw_table(mode="start-end")
+        self.dump_rw_table(mode="full")
 
     def sim_start2end(self):
         self.preprocess()
@@ -982,6 +984,7 @@ if __name__ == "__main__":
 
     # Step 2: Define arguments
     parser.add_argument('--func',action='store_true')
+    parser.add_argument("-l",'--logic_dir', type=str, help="Logic value path")
     parser.add_argument("-f", "--file", type=str, help="AST path")                  # Positional argument
 
     # Step 3: Parse the arguments
@@ -990,11 +993,17 @@ if __name__ == "__main__":
     if args.func:
         pprint.pp(list(FaultSimulator.__dict__.keys()))
 
+    if args.logic_dir:
+        log_dir = args.logic_dir
+    else:
+        log_dir = None
+
+
     if args.file:
         ast_file = args.file
         ast = Verilator_AST_Tree(ast_file)
 
         # parameter
         #ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
-        ast_sim = FaultSimulator(ast, min_cyc=5, max_cyc=89875)
+        ast_sim = FaultSimulator(ast, min_cyc=5, max_cyc=89875, logic_val_dir=log_dir)
         ast_sim.simulate(mode="full")

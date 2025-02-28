@@ -268,6 +268,9 @@ def prob_2_op(node):
         return prob_gt(l_value,r_value,result)
     elif node.tag == "gte":
         return prob_gte(l_value,r_value,result)
+    elif node.tag == "gtes":
+        # TODO
+        return 1.0, 1.0
     elif node.tag == "lte":
         return prob_lte(l_value,r_value,result)
     elif node.tag == "lt":
