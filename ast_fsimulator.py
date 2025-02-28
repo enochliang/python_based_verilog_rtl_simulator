@@ -1005,5 +1005,5 @@ if __name__ == "__main__":
 
         # parameter
         #ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
-        ast_sim = FaultSimulator(ast, min_cyc=5, max_cyc=89875, logic_val_dir=log_dir)
+        ast_sim = FaultSimulator(ast, start_cyc=800, min_cyc=800, max_cyc=900, logic_val_dir=log_dir)
         ast_sim.simulate(mode="full")

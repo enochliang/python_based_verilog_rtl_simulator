@@ -17,9 +17,10 @@ class AstDump:
 
 
 class AstDumpFsimSigTable:
-    def __init__(self,ast):
+    def __init__(self,ast,sig_list_dir):
         self.ast = ast
         self.signal_table = {"input":{},"ff":{},"output":{}}
+        self.sig_list_dir = sig_list_dir
 
     def dump_sig_dict(self):
         clk_name = "clk"
@@ -39,7 +40,7 @@ class AstDumpFsimSigTable:
                     self.signal_table["output"][var.attrib["name"]] = width
                 
         print("Dumped Signal Table.")
-        sig_table_dir = "./sig_list/fsim_sig_table.json"
+        sig_table_dir = self.sig_list_dir + "fsim_sig_table.json"
         f = open(sig_table_dir,"w")
         f.write(json.dumps(self.signal_table, indent=4))
         f.close()
@@ -48,10 +49,11 @@ class AstDumpFsimSigTable:
 
 
 class AstDumpPySimSigTable:
-    def __init__(self,ast):
+    def __init__(self,ast,sig_list_dir):
         self.ast = ast
         self._dict__varname_2_width = {}
         self.get_dict__var_width()
+        self.sig_list_dir = sig_list_dir
 
     def ast_process(self):
         # start scheduling
@@ -81,7 +83,7 @@ class AstDumpPySimSigTable:
                 continue
             varname_2_width[varname] = self._dict__varname_2_width[varname]
 
-        sig_table_dir = "./sig_list/pysim_sig_table.json"
+        sig_table_dir = self.sig_list_dir + "pysim_sig_table.json"
         f = open(sig_table_dir,"w")
         f.write(json.dumps(varname_2_width, indent=4))
         f.close()

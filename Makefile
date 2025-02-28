@@ -4,23 +4,26 @@ PYTHON := python3
 DESIGN_DIR := ../picorv32
 
 # top module name
-TOP_MODULE_NAME := picorv32_axi
+TOP_MODULE_NAME := tinyriscv
 
 # ast directory
-AST_XML := $(DESIGN_DIR)/ast/V$(TOP_MODULE_NAME).xml
-AST_XML_flat := $(DESIGN_DIR)/ast/V$(TOP_MODULE_NAME)_flat.xml
+AST_XML := ../obj_dir/Vtinyriscv.xml
+AST_XML_flat := ../obj_dir_flat/Vtinyriscv.xml
+
+# sig_list directory
+SIG_DIR := ../sig_list
 
 # dumped logic value directory
-LOG_VAL_DIR := $(DESIGN_DIR)/pysim_ff_value/
+LOG_VAL_DIR := ../pysim_ff_value/
 
 #=============================
 # AST Generation
 #=============================
-$(AST_XML):
-	cd $(DESIGN_DIR) && make ast
-
-$(AST_XML_flat):
-	cd $(DESIGN_DIR) && make ast_flatten
+#$(AST_XML):
+#	cd $(DESIGN_DIR) && make ast
+#
+#$(AST_XML_flat):
+#	cd $(DESIGN_DIR) && make ast_flatten
 
 #=============================
 # Checking
@@ -35,12 +38,12 @@ check_flat: ast_checker.py $(AST_XML_flat)
 # Preprocess & Signal Table Generation
 #======================================
 preprocess: check
-	mkdir -p sig_list
+	mkdir -p ../sig_list
 	$(PYTHON) ast_sim_prepare.py -f $(AST_XML_flat)
 
 sig_table:
-	mkdir -p sig_list
-	$(PYTHON) sig_table_prepare.py -f $(AST_XML_flat)
+	mkdir -p $(SIG_DIR)
+	$(PYTHON) sig_table_prepare.py -f $(AST_XML_flat) -l $(SIG_DIR)
 
 gen_pysim_wrap: sig_list/pysim_sig_table.json 
 	$(PYTHON) gen_pysim_wrapper.py

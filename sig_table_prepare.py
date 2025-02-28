@@ -11,7 +11,7 @@ import pickle
 import json
 
 class SigTablePrepare(AstNodeClassify):
-    def __init__(self,ast):
+    def __init__(self,ast,sig_list_dir):
         AstNodeClassify.__init__(self)
 
         self.ast = ast
@@ -24,15 +24,10 @@ class SigTablePrepare(AstNodeClassify):
         self.ast_dumper = AstDump(self.ast)
 
         # dump wrapper sig list
-        self.fsim_sig_dumper = AstDumpFsimSigTable(self.ast)
+        self.fsim_sig_dumper = AstDumpFsimSigTable(self.ast,sig_list_dir)
 
         # dump simulator sig list
-        self.pysim_sig_dumper = AstDumpPySimSigTable(self.ast)
-
-        # TODO
-        self.logic_value_file_dir = "../../pysim_ff_value/"
-        self.logic_value_file_head = "ff_value_C"
-        self.logic_value_file_tail = ".txt"
+        self.pysim_sig_dumper = AstDumpPySimSigTable(self.ast,sig_list_dir)
 
     def prepare(self):
         self.ast_duplicator.duplicate()
@@ -51,17 +46,20 @@ if __name__ == "__main__":
     # Step 2: Define arguments
     parser.add_argument('--func',action='store_true')
     parser.add_argument("-f", "--file", type=str, help="AST path")                  # Positional argument
+    parser.add_argument("-l", "--siglist_dir", type=str, help="siglist dir")        # Positional argument
 
     # Step 3: Parse the arguments
     args = parser.parse_args()
 
     if args.func:
         pprint.pp(list(FaultSimulator.__dict__.keys()))
+    if args.siglist_dir:
+        siglist_dir = args.siglist_dir
 
     if args.file:
         ast_file = args.file
         ast = Verilator_AST_Tree(ast_file)
 
-        sig_prep = SigTablePrepare(ast)
+        sig_prep = SigTablePrepare(ast,siglist_dir)
         sig_prep.prepare()
 
