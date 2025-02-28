@@ -444,7 +444,7 @@ def val_sel(node):
 def val_cond(node):
     width = node.width
     c_value = node.children[0].ivalue
-    c_value.replace("z","x")
+    c_value = c_value.replace("z","x")
     t_value = node.children[1].ivalue
     f_value = node.children[2].ivalue
     if c_value == "1":
