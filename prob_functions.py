@@ -252,6 +252,8 @@ def prob_2_op(node):
         return 1.0, 1.0
     elif node.tag == "sub":
         return 1.0, 1.0
+    elif node.tag == "mul":
+        return 1.0, 1.0
     elif node.tag == "muls":
         return 1.0, 1.0
     elif node.tag == "shiftl":

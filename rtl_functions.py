@@ -141,6 +141,15 @@ def val_sub(lv:str,rv:str,width:int):
     result = signed_int_2_bin(result,width)
     return result
 
+def val_mul(lv:str,rv:str,width:int):
+    if "x" in lv+rv:
+        return "x"*width
+    rv = int(rv,2)
+    lv = int(lv,2)
+    result = lv * rv
+    result = signed_int_2_bin(result,width)
+    return result
+
 def val_muls(lv:str,rv:str,width:int):
     if "x" in lv+rv:
         return "x"*width
@@ -389,6 +398,8 @@ def val_2_op(node):
         result = val_add(l_value,r_value,width)
     elif node.tag == "sub":
         result = val_sub(l_value,r_value,width)
+    elif node.tag == "mul":
+        result = val_mul(l_value,r_value,width)
     elif node.tag == "muls":
         result = val_muls(l_value,r_value,width)
     elif node.tag == "shiftl":
