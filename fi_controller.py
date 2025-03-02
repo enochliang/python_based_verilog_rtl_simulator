@@ -132,7 +132,7 @@ class FaultInjection(GenFaultList):
                 faulty_values = f.read().split("\n")
                 f.close()
                 # Read golden value for unknown elimination
-                f = open(f"golden_value/golden_value_C{fi_case[0]:07}.txt")
+                f = open(f"golden_value/golden_value_C{fi_case[0]+1:07}.txt")
                 golden_values = f.read().split("\n")
                 f.close()
 

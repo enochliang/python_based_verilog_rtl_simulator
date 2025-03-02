@@ -728,9 +728,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 n_fault = (fault[0],"data")
             else:
                 n_fault = fault
-            if fault in target_flist:
+            if n_fault in target_flist:
                 if prob*scaler > target_flist[n_fault]:
-                    target_flist[n_fault] = prob
+                    target_flist[n_fault] = prob*scaler
             else:
                 target_flist[n_fault] = prob*scaler
 
