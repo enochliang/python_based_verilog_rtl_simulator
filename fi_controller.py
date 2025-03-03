@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import ast
 from tqdm import tqdm
+import argparse
 
 class RTLFSimulationError(Exception):
     def __init__(self, message, error_code):
@@ -82,10 +83,10 @@ class GenFaultList:
 
 
 class FaultInjection(GenFaultList):
-    def __init__(self,sigtable_dir:str,ace_dir:str,fi_dir:str="./fi_sim_veri"):
+    def __init__(self,sigtable_dir:str, hw_dir:str, ace_dir:str, fi_name:str="./fi_sim_veri"):
         GenFaultList.__init__(self,sigtable_dir,ace_dir)
-        self.fi_dir = fi_dir
-        self.fsim_exe_file = f"{self.fi_dir} > fsim.log &"
+        self.fi_name = fi_name
+        self.fsim_exe_file = f"{self.fi_name} > fsim.log"
 
     def run_all_fault_sim(self):
 
@@ -209,31 +210,28 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="A simple example of argparse usage.")
 
     # Step 2: Define arguments
-    parser.add_argument("-t",'--rwtable_dir', type=str, help="RW-table directory")
+    parser.add_argument("-m",'--mode', type=str, help="fault injection mode [total, data, ctrl]")
+    parser.add_argument("-t",'--rwtable_dir', type=str, help="rw-table directory")
+    parser.add_argument("-d",'--hw_dir', type=str, help="hardware directory")
     parser.add_argument("-f", "--fsim_dir", type=str, help="fault simulator directory")                  # Positional argument
     parser.add_argument("-s", "--sigtable_dir", type=str, help="signal table directory")
 
     # Step 3: Parse the arguments
     args = parser.parse_args()
 
-    if args.rwtable_dir:
-        rwtable_dir = args.rwtable_dir
-    else:
-        rwtable_dir = None
-
-    if args.fsim_dir:
-        fsim_dir = args.fsim_dir
-    else:
-        fsim_dir = None
-
-    if args.sigtable_dir:
-        sigtable_dir = args.sigtable_dir
-    else:
-        sigtable_dir = "fsim_sig_table.json"
+    inj = FaultInjection(
+              sigtable_dir = args.sigtable_dir, 
+              hw_dir = args.hw_dir, 
+              ace_dir = args.rwtable_dir, 
+              fi_name = args.fi_name
+          )
 
 
-    inj = FaultInjection(sigtable_dir = sigtable_dir, ace_dir = rwtable_dir, fi_dir = fsim_dir)
-    inj.run_data_fault_sim()
-
+    if args.mode == "total":
+        inj.run_total_fault_sim()
+    elif args.mode == "data":
+        inj.run_data_fault_sim()
+    elif args.mode == "ctrl":
+        inj.run_ctrl_fault_sim()
     #gen = GenFaultList(sig_dict)
     #gen.setup()
