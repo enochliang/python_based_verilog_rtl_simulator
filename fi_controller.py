@@ -13,27 +13,30 @@ class RTLFSimulationError(Exception):
         return f"{self.args[0]} (Error Code: {self.error_code})"
 
 class GenFaultList:
-    def __init__(self,_sig_dict:dict,ace_dir:str):
-        self.total_cyc = 128
-        self.start_cyc = 300000
+    def __init__(self,sigtable_dir:str, ace_dir:str):
 
-        self.sig_dict = _sig_dict
+        f = open(sigtable_dir,"r")
+        self.sig_dict = json.load(f)
+        f.close()
+
         self.idx_2_sig_name_map = {}
         self.sig_name_2_idx_map = {}
         for idx,sig_name in enumerate(self.sig_dict["ff"]):
             self.idx_2_sig_name_map[str(idx)] = sig_name
             self.sig_name_2_idx_map[sig_name] = idx
 
-        self.rw_table_file = "prob_rw_table_300000-302047.csv"
+        self.rw_table_file = ace_dir
         
         self.load_rw_table()
 
     def load_rw_table(self):
         self.rw_table = pd.read_csv(self.rw_table_file)
         self.rw_table_list = list()
-        self.total_cycle = len(self.rw_table)
+        self.total_cyc = len(self.rw_table)
         for idx , row in self.rw_table.iterrows():
             cyc = row["cycle"]
+            if idx == 0:
+                self.start_cyc = cyc
             rw_events = row["rw_event"]
             rw_events = ast.literal_eval(rw_events)
             rw_row = {}
@@ -79,8 +82,8 @@ class GenFaultList:
 
 
 class FaultInjection(GenFaultList):
-    def __init__(self,_sig_dict:dict,ace_dir:str,fi_dir:str="./fi_sim_veri"):
-        GenFaultList.__init__(self,_sig_dict,ace_dir)
+    def __init__(self,sigtable_dir:str,ace_dir:str,fi_dir:str="./fi_sim_veri"):
+        GenFaultList.__init__(self,sigtable_dir,ace_dir)
         self.fi_dir = fi_dir
         self.fsim_exe_file = f"{self.fi_dir} > fsim.log &"
 
@@ -228,11 +231,8 @@ if __name__ == "__main__":
     else:
         sigtable_dir = "fsim_sig_table.json"
 
-    f = open(sigtable_dir,"r")
-    sig_dict = json.load(f)
-    f.close()
 
-    inj = FaultInjection(sig_dict,ace_dir=rwtable_dir,fi_dir=fsim_dir)
+    inj = FaultInjection(sigtable_dir = sigtable_dir, ace_dir = rwtable_dir, fi_dir = fsim_dir)
     inj.run_data_fault_sim()
 
     #gen = GenFaultList(sig_dict)
