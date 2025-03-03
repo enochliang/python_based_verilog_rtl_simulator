@@ -34,6 +34,9 @@ class GenFIWrapper(GenWrapper):
         self.GOLD_FP = "f_golden"
         self.OBS_FP = "f_observe"
 
+        # Wrapper name
+        self.WRAPPER_NAME = "fi_wrapper"
+
 
     def get_mask_size(self)->int:
         max_size = 0
@@ -46,6 +49,7 @@ class GenFIWrapper(GenWrapper):
         print("parameter CLK_HALF_PERIOD = 1;")
 
     def gen_task(self):
+        print(f"module {self.WRAPPER_NAME};\n")
         string = """
 //=============================
 // Tasks
@@ -93,13 +97,17 @@ endtask"""
         print(string)
 
     def gen_port_connect(self):
-        print("(")
+        print(f"\n{self.top_module_name} {self.top_module_name}(")
+        print(f"  .{self.tb_clk_name}({self.tb_clk_name}),")
         for sig in self.sig_dict["input"]:
             width = self.sig_dict["input"][sig]
             print(f"  .{sig}(tb_in__{sig}),")
-        for sig in self.sig_dict["output"]:
+        for idx,sig in enumerate(self.sig_dict["output"]):
             width = self.sig_dict["output"][sig]
-            print(f"  .{sig}({sig}),")
+            if idx+1 == len(self.sig_dict["output"]):
+                print(f"  .{sig}({sig})")
+            else:
+                print(f"  .{sig}({sig}),")
         print(");")
 
     def gen_reg(self):
@@ -117,7 +125,7 @@ endtask"""
         CNT_STR_LEN = self.cnt_str_len
 
         NUM_STR_LEN = self.NUM_STR_LEN
-        print("//----------------------------------------------------------------")
+        print("\n//----------------------------------------------------------------")
         print("//  FI_Wrapper Control Signals Declaration")
         print("//----------------------------------------------------------------")
         print(f"reg {self.tb_clk_name};")
@@ -137,12 +145,12 @@ endtask"""
         INPUT_FP = self.INPUT_FP
         GOLD_FP = self.GOLD_FP
         OBS_FP = self.OBS_FP
-        print("// File IO")
+        print("\n// File IO")
         print(f"integer {CTRL_FP},{INPUT_FP},{GOLD_FP},{OBS_FP};")
 
 
     def gen_reg__in_buffer(self):
-        print("//=====================")
+        print("\n//=====================")
         print("// input port buffers")
         print("//=====================")
         for sig in self.sig_dict["input"]:
@@ -151,7 +159,7 @@ endtask"""
             print(f"reg [{width-1}:0] tb_in2__{sig};")
 
     def gen_reg__out_buffer(self):
-        print("//=====================")
+        print("\n//=====================")
         print("// output port buffers")
         print("//=====================")
         for sig in self.sig_dict["output"]:
@@ -159,7 +167,7 @@ endtask"""
             print(f"reg [{width-1}:0] tb_out__{sig};")
 
     def gen_wire__out_port(self):
-        print("//=====================")
+        print("\n//=====================")
         print("// output port wire")
         print("//=====================")
         for sig in self.sig_dict["output"]:
@@ -167,7 +175,7 @@ endtask"""
             print(f"wire [{width-1}:0] {sig};")
 
     def gen_reg__ff_reg_buffer(self):
-        print("//=============================")
+        print("\n//=============================")
         print("// fault free register buffers")
         print("//=============================")
         for sig in self.sig_dict["ff"]:
@@ -176,7 +184,7 @@ endtask"""
             print(f"reg [{width-1}:0] ff_buf__{sig_name};")
 
     def gen_reg__golden_reg_buffer(self):
-        print("//=============================")
+        print("\n//=============================")
         print("// golden register buffers")
         print("//=============================")
         for sig in self.sig_dict["ff"]:
@@ -186,7 +194,7 @@ endtask"""
 
     def gen_inj_flow(self):
         print('initial begin')
-        print('  tb_clk = 0;')
+        print(f'  {self.tb_clk_name} = 0;')
         print(f'  { self.INJ_FLG } = 0;')
         print(f'  { self.INPUT_FLG } = 0;\n')
 
@@ -203,7 +211,7 @@ endtask"""
         print(f'  setmask({ self.BIT_POS }, mask);\n')
 
         # load fault free input buffer
-        print(f'  //==============================')
+        print(f'\n  //==============================')
         print(f'  // load fault free input buffer')
         print(f'  //==============================')
         print(f'  {self.INPUT_FP} = $fopen({{"{self.FF_DIR}_C",{self.CNT_NAME}_str,".txt"}},"r");')
@@ -219,7 +227,7 @@ endtask"""
         print(f'  $fclose({self.INPUT_FP});')
 
         # load golden buffer
-        print(f'  //==============================')
+        print(f'\n  //==============================')
         print(f'  // load golden output buffer')
         print(f'  //==============================')
         print(f'  {self.GOLD_FP} = $fopen({{"{self.GOLD_DIR}_C",{self.CNT_NAME}_str2,".txt"}},"r");')
@@ -229,7 +237,7 @@ endtask"""
         print(f'  $fclose({self.GOLD_FP});')
 
         # timing control
-        print("  //================")
+        print("\n  //================")
         print("  // timing control")
         print("  //================")
         print(f"  #CLK_HALF_PERIOD {self.INPUT_FLG} = !{self.INPUT_FLG};")
@@ -240,17 +248,17 @@ endtask"""
         print(f"  #CLK_HALF_PERIOD;")
 
         # dump fault effect observation
-        print(f'  //===============================')
+        print(f'\n  //===============================')
         print(f'  // dump fault effect observation')
         print(f'  //===============================')
         print(f'  {self.OBS_FP} = $fopen({{"{self.OBS_DIR}_C", {self.CNT_NAME}_str, "_R", {self.INJ_ID}_str, "_B", {self.BIT_POS}_str , ".txt"}},"w");')
         for sig in self.sig_dict["ff"]:
             gold_buf_name = "golden_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
-            print(f'  $fwrite({self.OBS_FP},"%b\\n", {gold_buf_name} ^ {sig});')
+            print(f'  $fwrite({self.OBS_FP},"%b\\n", {gold_buf_name} ^ {self.WRAPPER_NAME}.{sig});')
         print(f'  $fclose({self.OBS_FP});')
         print("end")
 
-        print(f'//===============================')
+        print(f'\n//===============================')
         print(f'// always blocks')
         print(f'//===============================')
         print(f"// fault free pattern filling (to registers)")
@@ -259,7 +267,7 @@ endtask"""
             ff_buf_name = "ff_buf__"+sig.replace("[","__").replace("]","").replace(".","__")
             print(f'  {sig} <= {ff_buf_name};')
         print(f"end")
-        print(f"// fault injection")
+        print(f"\n// fault injection")
         print(f"always@(posedge {self.INJ_FLG})begin")
         print(f"  case({ self.INJ_ID })")
         for idx, sig in enumerate(self.sig_dict["ff"]):
@@ -267,13 +275,14 @@ endtask"""
             print(f"    'd{idx}: {sig} <= {sig}^mask[{width-1}:0];")
         print(f"  endcase")
         print(f"end")
-        print(f"// input sequence")
+        print(f"\n// input sequence")
         print(f"always@(posedge {self.tb_clk_name} )begin")
         for sig in self.sig_dict["input"]:
             ff_buf_name = "tb_in__"+sig.replace("[","__").replace("]","").replace(".","__")
             ff_buf_name2 = "tb_in2__"+sig.replace("[","__").replace("]","").replace(".","__")
             print(f"  {ff_buf_name} <= {ff_buf_name2};")
         print(f"end")
+        print(f"endmodule")
 
 
     def generate(self):
@@ -290,4 +299,5 @@ if __name__ == "__main__":
     sig_dict = json.load(f)
     gen = GenFIWrapper(sig_dict)
     gen.generate()
+
 
