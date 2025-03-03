@@ -6,8 +6,8 @@ from lxml import etree
 import json
 
 class GenFIWrapper(GenWrapper):
-    def __init__(self,sig_dict):
-        GenWrapper.__init__(self,sig_dict)
+    def __init__(self,sig_dict,tb_clk,tb_rst,top_module_name,hier_above_top,ff_dir,golden_dir,obs_dir):
+        GenWrapper.__init__(self,sig_dict,tb_clk,tb_rst,top_module_name,hier_above_top)
 
         self.NUM_STR_LEN = 4
 
@@ -16,8 +16,9 @@ class GenFIWrapper(GenWrapper):
         self.golden_output_tag_name = "GO"
 
         self.FF_DIR = "ff_value/ff_value"
-        self.GOLD_DIR = "golden_value/golden_value"
-        self.OBS_DIR = "result/result"
+        self.FF_DIR = ff_dir + "/ff_value"
+        self.GOLD_DIR = golden_dir + "/golden_value"
+        self.OBS_DIR = obs_dir + "/result"
 
         self.mask_size = self.get_mask_size()
 
@@ -294,10 +295,31 @@ endtask"""
         self.gen_inj_flow()
 
 if __name__ == "__main__":
-    
-    f = open("sig_list/fsim_sig_table.json","r")
-    sig_dict = json.load(f)
-    gen = GenFIWrapper(sig_dict)
-    gen.generate()
+    # Step 1: Create the parser
+    parser = argparse.ArgumentParser(description="A simple example of argparse usage.")
 
+    # Step 2: Define arguments
+    parser.add_argument("--tb_clk", type=str, help="tb clk name")                  # Positional argument
+    parser.add_argument("--tb_rst", type=str, help="tb rst name")                  # Positional argument
+    parser.add_argument("--top_module_name", type=str, help="top module name")                  # Positional argument
+    parser.add_argument("--hier_above_top", type=str, help="hier above top")                  # Positional argument
+    parser.add_argument("--ff_value_dir", type=str, help="ff value dir")                  # Positional argument
+    parser.add_argument("--sig_list_dir", type=str, help="sig list dir")                  # Positional argument
+    parser.add_argument("--golden_value_dir", type=str, help="golden value dir")                  # Positional argument
+    parser.add_argument("--result_dir", type=str, help="result dir")                  # Positional argument
+    # Step 3: Parse the arguments
+    args = parser.parse_args()
+    tb_clk = args.tb_clk 
+    tb_rst = args.tb_rst 
+    top_module_name = args.top_module_name 
+    hier_above_top = args.hier_above_top 
+    ff_value_dir = args.ff_value_dir 
+    sig_list_dir = args.sig_list_dir 
+    golden_value_dir = args.golden_value_dir 
+    result_dir = args.result_dir 
+    
+    f = open(sig_list_dir+"/fsim_sig_table.json","r")
+    sig_dict = json.load(f)
+    gen = GenFIWrapper(sig_dict,tb_clk,tb_rst,top_module_name,hier_above_top,ff_value_dir,golden_value_dir,result_dir)
+    gen.generate()
 

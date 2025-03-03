@@ -20,14 +20,17 @@ class SigTablePrepare(AstNodeClassify):
         self.ast_duplicator = AstDuplicate(self.ast)
         self.my_ast = None
 
+        # sig list
+        self.sig_list = sig_list_dir + "/"
+
         # dump ast to xml file
         self.ast_dumper = AstDump(self.ast)
 
         # dump wrapper sig list
-        self.fsim_sig_dumper = AstDumpFsimSigTable(self.ast,sig_list_dir)
+        self.fsim_sig_dumper = AstDumpFsimSigTable(self.ast,self.sig_list)
 
         # dump simulator sig list
-        self.pysim_sig_dumper = AstDumpPySimSigTable(self.ast,sig_list_dir)
+        self.pysim_sig_dumper = AstDumpPySimSigTable(self.ast,self.sig_list)
 
     def prepare(self):
         self.ast_duplicator.duplicate()

@@ -5,10 +5,10 @@ from lxml import etree
 import json
 
 class GenWrapper:
-    def __init__(self,sig_dict):
+    def __init__(self,sig_dict,tb_clk,tb_rst,top_module_name,hier_above_top):
         self.sig_dict = sig_dict
-        self.tb_clk_name = "tb_clk"
-        self.tb_rst_name = "resetn"
+        self.tb_clk_name = tb_clk
+        self.tb_rst_name = tb_rst
 
         # Verilog Variable Declaration Name
         self.CNT_NAME = "cycle"
@@ -16,8 +16,8 @@ class GenWrapper:
         self.cnt_str_len = 7
 
         # design module info
-        self.top_module_name = "picorv32_axi"
-        self.hier_above_top = "top.uut"
+        self.top_module_name = top_module_name
+        self.hier_above_top = hier_above_top
 
     def gen_cnt(self)->list:
         CLK = self.tb_clk_name

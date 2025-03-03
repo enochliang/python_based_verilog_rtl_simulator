@@ -11,7 +11,7 @@ import pickle
 import json
 
 class SimulatorPrepare(AstNodeClassify):
-    def __init__(self,ast):
+    def __init__(self,ast,logic_value_file_dir,sig_list_dir):
         AstNodeClassify.__init__(self)
 
         self.ast = ast
@@ -25,7 +25,8 @@ class SimulatorPrepare(AstNodeClassify):
 
 
         # TODO
-        self.logic_value_file_dir = "../../pysim_ff_value/"
+        self.sig_list_dir = sig_list_dir
+        self.logic_value_file_dir = logic_value_file_dir
         self.logic_value_file_head = "ff_value_C"
         self.logic_value_file_tail = ".txt"
 
@@ -38,14 +39,14 @@ class SimulatorPrepare(AstNodeClassify):
 
     def load_ordered_varname(self):
         self.varname_list = []
-        f = open("./sig_list/pysim_sig_table.json","r")
+        f = open(self.sig_list_dir + "/pysim_sig_table.json","r")
         for varname in json.load(f).keys():
             self.varname_list.append(varname)
         f.close()
 
     def load_logic_value_file(self,cycle,width:int=7,output=False) -> list:
         # Fetch logic value dump file at the specific clock cycle
-        target_filename = self.logic_value_file_dir + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
+        target_filename = self.logic_value_file_dir + "/" + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
         if output:
             print(f"reading file for current cycle: {target_filename}")
         f = open(target_filename,"r")
@@ -69,7 +70,7 @@ class SimulatorPrepare(AstNodeClassify):
 
     def load_next_logic_value_file(self,cycle,width:int=7,output=False) -> list:
         # Fetch logic value dump file at the specific clock cycle
-        target_filename = self.logic_value_file_dir + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
+        target_filename = self.logic_value_file_dir + "/" + self.logic_value_file_head + f"{cycle:0{width}}" + self.logic_value_file_tail
         if output:
             print(f"reading file for next cycle: {target_filename}")
         f = open(target_filename,"r")
@@ -108,6 +109,8 @@ if __name__ == "__main__":
     # Step 2: Define arguments
     parser.add_argument('--func',action='store_true')
     parser.add_argument("-f", "--file", type=str, help="AST path")                  # Positional argument
+    parser.add_argument("--logic_value_dir", type=str, help="AST path")             # Positional argument
+    parser.add_argument("--sig_list_dir", type=str, help="AST path")                # Positional argument
 
     # Step 3: Parse the arguments
     args = parser.parse_args()
@@ -119,6 +122,6 @@ if __name__ == "__main__":
         ast_file = args.file
         ast = Verilator_AST_Tree(ast_file)
 
-        sim_prep = SimulatorPrepare(ast)
+        sim_prep = SimulatorPrepare(ast,args.logic_value_dir,args.sig_list_dir)
         sim_prep.preprocess()
 
