@@ -1,24 +1,6 @@
 import os
+from config import *
 
-config = {
-        "picorv32":{
-            "tool":"python3",
-            "design_dir":"/ibex/hardware/picorv32/benchmark_basicmath/",
-            "top_module_name":"picorv32",
-            "tb_clk":"clk",
-            "tb_rst":"rst",
-            "hier_above_top":"top.uut",
-            "ast_folder":"ast",
-            "ast_vc":"AST.vc",
-            "ast_flat_vc":"AST_flat.vc",
-            "start_cyc":5,
-            "min_cyc":0,
-            "max_cyc":5,
-            "period":8
-        },
-
-
-    }
 
 class GenMakefile:
     def __init__(self, tool, design_dir, top_module_name, tb_clk, tb_rst, hier_above_top, ast_folder, AST, AST_flat, start_cyc=0, min_cyc=0, max_cyc=0):
