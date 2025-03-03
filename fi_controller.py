@@ -13,7 +13,7 @@ class RTLFSimulationError(Exception):
         return f"{self.args[0]} (Error Code: {self.error_code})"
 
 class GenFaultList:
-    def __init__(self,_sig_dict:dict):
+    def __init__(self,_sig_dict:dict,ace_dir:str):
         self.total_cyc = 128
         self.start_cyc = 300000
 
@@ -79,9 +79,10 @@ class GenFaultList:
 
 
 class FaultInjection(GenFaultList):
-    def __init__(self,_sig_dict:dict):
-        GenFaultList.__init__(self,_sig_dict)
-        self.fsim_exe_file = "./fi_sim_veri > log &"
+    def __init__(self,_sig_dict:dict,ace_dir:str,fi_dir:str="./fi_sim_veri"):
+        GenFaultList.__init__(self,_sig_dict,ace_dir)
+        self.fi_dir = fi_dir
+        self.fsim_exe_file = f"{self.fi_dir} > fsim.log &"
 
     def run_all_fault_sim(self):
 
@@ -201,11 +202,37 @@ class FaultInjection(GenFaultList):
                             
 
 if __name__ == "__main__":
+    # Step 1: Create the parser
+    parser = argparse.ArgumentParser(description="A simple example of argparse usage.")
 
-    f = open("fsim_sig_table.json","r")
+    # Step 2: Define arguments
+    parser.add_argument("-t",'--rwtable_dir', type=str, help="RW-table directory")
+    parser.add_argument("-f", "--fsim_dir", type=str, help="fault simulator directory")                  # Positional argument
+    parser.add_argument("-s", "--sigtable_dir", type=str, help="signal table directory")
+
+    # Step 3: Parse the arguments
+    args = parser.parse_args()
+
+    if args.rwtable_dir:
+        rwtable_dir = args.rwtable_dir
+    else:
+        rwtable_dir = None
+
+    if args.fsim_dir:
+        fsim_dir = args.fsim_dir
+    else:
+        fsim_dir = None
+
+    if args.sigtable_dir:
+        sigtable_dir = args.sigtable_dir
+    else:
+        sigtable_dir = "fsim_sig_table.json"
+
+    f = open(sigtable_dir,"r")
     sig_dict = json.load(f)
     f.close()
-    inj = FaultInjection(sig_dict)
+
+    inj = FaultInjection(sig_dict,ace_dir=rwtable_dir,fi_dir=fsim_dir)
     inj.run_data_fault_sim()
 
     #gen = GenFaultList(sig_dict)
