@@ -22,6 +22,11 @@ class GenFaultList:
 
         self.idx_2_sig_name_map = {}
         self.sig_name_2_idx_map = {}
+        self.total_cyc = 0
+        self.start_cyc = 0
+        self.rw_table = None
+        self.rw_table_list = None
+
         for idx,sig_name in enumerate(self.sig_dict["ff"]):
             self.idx_2_sig_name_map[str(idx)] = sig_name
             self.sig_name_2_idx_map[sig_name] = idx
@@ -44,6 +49,8 @@ class GenFaultList:
             for rw_event in rw_events:
                 rw_row[rw_event["r"]] = {"w":set([w_event for w_event in rw_event["w"]]), "stay":set([w_event for w_event in rw_event["stay"]]), "ctrl":set([w_event for w_event in rw_event["ctrl"]])}
             self.rw_table_list.append(rw_row)
+
+
         print("rw table loaded")
     
 
@@ -98,7 +105,11 @@ class FaultInjection(GenFaultList):
             f.close()
             os.system(self.fsim_exe_file)
         
-        self.result_stat()
+        self.result_stat(mode="total")
+
+    def reg_level_dataframe(self):
+        reg_level_fault_effect = [{}]*(self.total_cyc)
+
 
     def run_data_fault_sim(self):
 
@@ -119,19 +130,30 @@ class FaultInjection(GenFaultList):
                     pbar.update(100)
         print("fault injection done.")
 
-        self.result_data_stat()
+        self.result_stat(mode="data")
 
-    def result_data_stat(self):
+    def result_stat(self, mode:str):
         clock_cyc_col = []
         src_bit_col = []
         dst_bit_col = []
         faulty_effect_class_col = []
+
+        reg_level_fault_effect = {}
         
         print("[Progress] observing fault injection result...")
-        tot = len(self.data_fault_list)
+
+        if mode == "data":
+            tot = len(self.data_fault_list)
+            fault_list = self.data_fault_list
+        elif mode == "ctrl":
+            tot = len(self.ctrl_fault_list)
+            fault_list = self.ctrl_fault_list
+        elif mode == "total":
+            tot = len(self.all_fault_list)
+            fault_list = self.all_fault_list
         cnt = 0
         with tqdm(total=tot) as pbar:
-            for fi_case in self.data_fault_list:
+            for fi_case in fault_list:
                 # Read faulty bit
                 f = open(f"result/result_C{fi_case[0]:07}_R{fi_case[1]:04}_B{fi_case[2]:04}.txt","r")
                 faulty_values = f.read().split("\n")
@@ -142,18 +164,31 @@ class FaultInjection(GenFaultList):
                 f.close()
 
                 src_reg_name = self.idx_2_sig_name_map[str(fi_case[1])]
+                cycle = fi_case[0]
                 dst_reg_list = []
+
+
                 for idx,sig_name in enumerate(self.sig_dict["ff"]):
                     width = len(faulty_values[idx])
                     if len(faulty_values[idx]) != int(self.sig_dict["ff"][sig_name]):
                         raise RTLFSimulationError("Error: Width Not Match.",1)
                     else:
+                        prop_flag = False
                         for c_idx in range(width):
                             if golden_values[idx][width-1-c_idx] == "x":
                                 continue
                             if faulty_values[idx][width-1-c_idx] == "1":
+                                prop_flag = True
                                 dst_reg_list.append(f"{sig_name}[{c_idx}]")
-                clock_cyc_col.append(fi_case[0])
+                    if prop_flag:
+                        if (cycle, src_reg_name) in reg_level_fault_effect:
+                            reg_level_fault_effect[cycle-self.start_cyc][src_reg_name][sig_name] += 1
+                        else:
+                            reg_level_fault_effect[cycle-self.start_cyc][src_reg_name] = {}
+                            reg_level_fault_effect[cycle-self.start_cyc][src_reg_name][sig_name] = 1
+
+
+                clock_cyc_col.append(cycle)
                 src_bit_col.append(f"{src_reg_name}[{fi_case[2]}]")
                 dst_bit_col.append(dst_reg_list)
                 if dst_reg_list == []:
@@ -163,45 +198,15 @@ class FaultInjection(GenFaultList):
                 else:
                     faulty_effect_class_col.append("multiple")
 
+
                 cnt += 1
                 if cnt % 100 == 0:
                     pbar.update(100)
 
 
         df = pd.DataFrame({"cycle":clock_cyc_col,"src_bit":src_bit_col,"dst_bit":dst_bit_col,"fault_effect":faulty_effect_class_col})
-        df.to_csv(f"fault_sim_result(data).csv")
-
-    def result_stat(self,mode:str):
-        clock_cyc_col = []
-        src_bit_col = []
-        dst_bit_col = []
-        faulty_effect_class_col = []
-        
-        for fi_case in self.all_fault_list:
-            f = open(f"result/result_C{fi_case[0]:07}_R{fi_case[1]:04}_B{fi_case[2]:04}.txt","r")
-            faulty_values = f.read().split("\n")
-            f.close()
-            src_reg_name = self.idx_2_sig_name_map[str(fi_case[1])]
-            dst_reg_list = []
-            for idx,sig_name in enumerate(self.sig_dict["ff"]):
-                if len(faulty_values[idx]) != int(self.sig_dict["ff"][sig_name]):
-                    raise RTLFSimulationError("Error: Width Not Match.",1)
-                else:
-                    for c_idx in range(len(faulty_values[idx])):
-                        if faulty_values[idx][len(faulty_values[idx])-1-c_idx] == "1":
-                            dst_reg_list.append(f"{sig_name}[{c_idx}]")
-            clock_cyc_col.append(fi_case[0])
-            src_bit_col.append(f"{src_reg_name}[{fi_case[2]}]")
-            dst_bit_col.append(dst_reg_list)
-            if dst_reg_list == []:
-                faulty_effect_class_col.append("masked")
-            elif len(dst_reg_list) == 1:
-                faulty_effect_class_col.append("single")
-            else:
-                faulty_effect_class_col.append("multiple")
-
-        df = pd.DataFrame({"cycle":clock_cyc_col,"src_bit":src_bit_col,"dst_bit":dst_bit_col,"fault_effect":faulty_effect_class_col})
         df.to_csv(f"fault_sim_result({mode}).csv")
+
 
                             
 
