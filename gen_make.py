@@ -8,8 +8,11 @@ class GenMakefile:
         self.design_dir = os.path.abspath(design_dir)
         self.top_module_name = top_module_name
         self.makefile_path = "./Makefile"
+
+        self.ast_folder = ast_folder
         self.ast      = self.design_dir + "/" + ast_folder + "/V" + top_module_name + ".xml"
         self.ast_flat = self.design_dir + "/" + ast_folder + "/V" + top_module_name + "_flat.xml"
+        
         self.sig_list_dir = self.design_dir + "/sig_list"
         self.LOG_VAL_DIR = self.design_dir + "/pysim_ff_value"
         self.FF_VAL_DIR = self.design_dir + "/ff_value"
@@ -48,10 +51,10 @@ class GenMakefile:
         self.makefile += "# AST Generation              \n"
         self.makefile += "#=============================\n"
         self.makefile += "$(AST_XML):\n"
-        self.makefile += "\tcd $(DESIGN_DIR) && "
+        self.makefile += f"\tcd $(DESIGN_DIR) && mkdir -p {self.ast_folder}"
         self.makefile += "verilator -f " + self.AST + "\n\n"
         self.makefile += "$(AST_XML_flat):\n"
-        self.makefile += "\tcd $(DESIGN_DIR) && "
+        self.makefile += f"\tcd $(DESIGN_DIR) && mkdir -p {self.ast_folder}"
         self.makefile += "verilator -f " + self.AST_flat + "\n\n"
 
     def _gen_check(self):
