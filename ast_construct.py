@@ -9,7 +9,7 @@ import json
 
 
 class ScheduledAst:
-    def __init__(self,ast):
+    def __init__(self,ast,design_dir):
         self.ast = ast
 
         # start scheduling
@@ -22,16 +22,16 @@ class ScheduledAst:
         self.ordered_subcircuit_id_tail = self.ast_scheduler.ordered_subcircuit_id_tail
 
         # flatten composite signals to packed registers
-        self.flattener = AstArrayFlatten(self.ast)
+        self.flattener = AstArrayFlatten(self.ast,design_dir)
         self.flattener.module_var_flatten()
 
 
 
 
 class AstConstructBase:
-    def __init__(self,ast):
+    def __init__(self,ast,design_dir):
         # the ready ast for new ast feature construction should be scheduled & array-flattened
-        self.scheduled_ast = ScheduledAst(ast)
+        self.scheduled_ast = ScheduledAst(ast,design_dir)
         self.ast = self.scheduled_ast.ast
 
         self.analyzer = AstAnalyzer(self.ast)
@@ -43,8 +43,8 @@ class AstConstructBase:
 
 
 class AstConstructAddVar(AstConstructBase):
-    def __init__(self,ast):
-        AstConstructBase.__init__(self,ast)
+    def __init__(self,ast,design_dir):
+        AstConstructBase.__init__(self,ast,design_dir)
 
     def append_var_node(self):
         print("start adding <var> nodes into ast... ")
@@ -97,8 +97,8 @@ class AstConstructAddVar(AstConstructBase):
         return new_var_node
 
 class AstConstructAddTree(AstConstructAddVar):
-    def __init__(self,ast):
-        AstConstructAddVar.__init__(self,ast)
+    def __init__(self,ast,design_dir):
+        AstConstructAddVar.__init__(self,ast,design_dir)
 
     def _add_ast_varref(self,node):
         name = node.attrib["name"]
@@ -179,8 +179,8 @@ class AstConstructAddTree(AstConstructAddVar):
             self.my_ast._map__treeid_2_node[subcircuit_id] = my_entry_node
 
 class AstConstruct(AstConstructAddTree):
-    def __init__(self,ast):
-        AstConstructAddTree.__init__(self,ast)
+    def __init__(self,ast,design_dir):
+        AstConstructAddTree.__init__(self,ast,design_dir)
 
     def construct(self):
         self.append_var_node()
@@ -246,8 +246,8 @@ class AstConstruct(AstConstructAddTree):
 
 
 class AstDuplicate(AstConstruct):
-    def __init__(self,ast):
-        AstConstruct.__init__(self,ast)
+    def __init__(self,ast,design_dir):
+        AstConstruct.__init__(self,ast,design_dir)
 
         # self.my_ast is ready
 

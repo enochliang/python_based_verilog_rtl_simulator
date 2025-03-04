@@ -200,10 +200,10 @@ class AstNumberer:
         return self.subcircuit_num
 
 class AstArrayFlatten:
-    def __init__(self,ast):
+    def __init__(self,ast,design_dir):
         self.ast = ast
         self.analyzer = AstAnalyzer(self.ast)
-        self.ast_dumper = AstDump(self.ast)
+        self.ast_dumper = AstDump(self.ast,design_dir)
 
     def module_var_flatten(self):
         """

@@ -470,7 +470,7 @@ def val_cond(node):
         #   for verilator & iverilog
         result = f_value
         #   for VCS
-        result = t_value
+        #result = t_value
     else:
         result = ''
         for idx in range(width):

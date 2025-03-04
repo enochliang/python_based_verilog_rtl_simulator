@@ -3,33 +3,55 @@ from config import *
 
 
 class GenMakefile:
-    def __init__(self, tool, design_dir, top_module_name, tb_clk, tb_rst, hier_above_top, ast_folder, AST, AST_flat, start_cyc=0, min_cyc=0, max_cyc=0):
-        self.tool = tool
-        self.design_dir = os.path.abspath(design_dir)
-        self.top_module_name = top_module_name
-        self.makefile_path = "./Makefile"
+    def __init__(self, design_name:str, pysim_mode:str="full", start_cyc=None, period=None):
+        config = configs[design_name]
 
-        self.ast_folder = ast_folder
-        self.ast      = self.design_dir + "/" + ast_folder + "/V" + top_module_name + ".xml"
-        self.ast_flat = self.design_dir + "/" + ast_folder + "/V" + top_module_name + "_flat.xml"
-        
-        self.sig_list_dir = self.design_dir + "/sig_list"
-        self.LOG_VAL_DIR = self.design_dir + "/pysim_ff_value"
-        self.FF_VAL_DIR = self.design_dir + "/ff_value"
+        self.python_cmd = config["python_cmd"]
+        self.design_folder = config["design_folder"]
+        self.tb_clk = config["tb_clk"]
+        self.tb_rst = config["tb_rst"]
+        self.hier_above_top = config["top_hier"]
+        self.min_cyc = config["min_cyc"]
+        self.max_cyc = config["max_cyc"]
+
+        #self.design_folder = os.path.abspath(design_dir)
+        self.top_module_name = config["top_module_name"]
+
+        self.makefile_path = "./Makefile"
+        ast_folder = "ast"
+        sig_list_folder = "sig_list"
+
+        self.hw_root = "../hardware"
+        self.design_dir = os.path.abspath(self.hw_root) + "/" + self.design_folder
+
+        # verilator argument file for ast generation
+        self.ast_vc      = "ast.vc"
+        self.ast_flat_vc = "ast_flat.vc"
+
+        # ast xml file name with absolute directory
+        self.ast_dir  = self.design_dir + "/" + ast_folder
+        self.ast      = self.ast_dir + "/V" + self.top_module_name + ".xml"
+        self.ast_flat = self.ast_dir + "/V" + self.top_module_name + "_flat.xml"
+
+        # signal table folder absolute directory
+        self.sig_list_dir = self.design_dir + "/" + sig_list_folder
+
+        self.LOG_VAL_DIR    = self.design_dir + "/pysim_ff_value"
+        self.FF_VAL_DIR     = self.design_dir + "/ff_value"
         self.GOLDEN_VAL_DIR = self.design_dir + "/golden_value"
-        self.RESULT_DIR = self.design_dir + "/result"
+        self.RESULT_DIR     = self.design_dir + "/result"
+
+        if start_cyc:
+            self.start_cyc = start_cyc
+        if period:
+            self.period = period
+        self.pysim_mode = pysim_mode
+
         self.makefile = ""
-        self.AST = AST
-        self.AST_flat = AST_flat
-        self.tb_clk = tb_clk
-        self.tb_rst = tb_rst
-        self.hier_above_top = hier_above_top
-        self.start_cyc = start_cyc
-        self.min_cyc = min_cyc
-        self.max_cyc = max_cyc
+
 
     def _gen_define(self):
-        self.makefile += "PYTHON := " + self.tool + "\n\n"
+        self.makefile += "PYTHON := " + self.python_cmd + "\n\n"
         self.makefile += "# design repo directory\n"
         self.makefile += "DESIGN_DIR := " + self.design_dir + "\n\n"
         self.makefile += "# top module name\n"
@@ -51,11 +73,11 @@ class GenMakefile:
         self.makefile += "# AST Generation              \n"
         self.makefile += "#=============================\n"
         self.makefile += "$(AST_XML):\n"
-        self.makefile += f"\tcd $(DESIGN_DIR) && mkdir -p {self.ast_folder}"
-        self.makefile += "verilator -f " + self.AST + "\n\n"
+        self.makefile += f"\tmkdir -p {self.ast_dir}\n"
+        self.makefile += "\tcd $(DESIGN_DIR) && verilator -f " + self.ast_vc + "\n\n"
         self.makefile += "$(AST_XML_flat):\n"
-        self.makefile += f"\tcd $(DESIGN_DIR) && mkdir -p {self.ast_folder}"
-        self.makefile += "verilator -f " + self.AST_flat + "\n\n"
+        self.makefile += f"\tmkdir -p {self.ast_dir}\n"
+        self.makefile += "\tcd $(DESIGN_DIR) && verilator -f " + self.ast_flat_vc + "\n\n"
 
     def _gen_check(self):
         self.makefile += "#=============================\n"
@@ -72,36 +94,44 @@ class GenMakefile:
         self.makefile += "#=============================\n"
         self.makefile += "sig_table: \n"
         self.makefile += "\tmkdir -p $(SIG_DIR)\n"
-        self.makefile += "\t$(PYTHON) sig_table_prepare.py -f $(AST_XML_flat) -l $(SIG_DIR)\n\n"
+        self.makefile += f"\t$(PYTHON) sig_table_prepare.py -f $(AST_XML_flat) -l $(SIG_DIR) --design_dir {self.design_folder}\n\n"
 
     def _gen_preprocess(self):
         self.makefile += "#=============================\n"
         self.makefile += "# Preprocess                  \n"
         self.makefile += "#=============================\n"
         self.makefile += "preprocess: check \n"
-        self.makefile += f"\t$(PYTHON) ast_sim_prepare.py -f $(AST_XML_flat) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR)\n\n"
+        self.makefile += f"\t$(PYTHON) ast_sim_prepare.py -f $(AST_XML_flat) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --design_dir {self.design_folder}\n\n"
         self.makefile += "gen_pysim_wrap: " + self.sig_list_dir + "/pysim_sig_table.json \n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/pysim_ff_value\n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/ff_value\n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/golden_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/pysim_ff_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/ff_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/golden_value\n"
         self.makefile += f"\t$(PYTHON) gen_pysim_wrapper.py --tb_clk {self.tb_clk} --tb_rst {self.tb_rst} --top_module_name {self.top_module_name} --hier_above_top {self.hier_above_top} --ff_value_dir {self.LOG_VAL_DIR } --sig_list_dir {self.sig_list_dir}\n\n"
         self.makefile += "gen_ff_wrap: " + self.sig_list_dir + "/fsim_sig_table.json \n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/pysim_ff_value\n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/ff_value\n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/golden_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/pysim_ff_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/ff_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/golden_value\n"
         self.makefile += f"\t$(PYTHON) gen_ff_wrapper.py --tb_clk {self.tb_clk} --tb_rst {self.tb_rst} --top_module_name {self.top_module_name} --hier_above_top {self.hier_above_top} --ff_value_dir {self.FF_VAL_DIR} --sig_list_dir {self.sig_list_dir} --golden_value_dir {self.GOLDEN_VAL_DIR}\n\n"
         self.makefile += "gen_fi_wrap: " + self.sig_list_dir + "/fsim_sig_table.json \n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/pysim_ff_value\n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/ff_value\n"
-        self.makefile += f"\tmkdir -p {self.design_dir}/golden_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/pysim_ff_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/ff_value\n"
+        self.makefile += f"\tmkdir -p {self.design_folder}/golden_value\n"
         self.makefile += f"\t$(PYTHON) gen_fi_wrapper.py --tb_clk {self.tb_clk} --tb_rst {self.tb_rst} --top_module_name {self.top_module_name} --hier_above_top {self.hier_above_top} --ff_value_dir {self.FF_VAL_DIR} --sig_list_dir {self.sig_list_dir} --golden_value_dir {self.GOLDEN_VAL_DIR} --result_dir {self.RESULT_DIR}\n\n"
 
     def _gen_pysim(self):
         self.makefile += "#=============================\n"
         self.makefile += "# Py-simulation               \n"
         self.makefile += "#=============================\n"
-        self.makefile += "fsim: check ast_schedule.py \n"
-        self.makefile += f"\t$(PYTHON) ast_fsimulator.py -f $(AST_XML_flat) -l $(LOG_VAL_DIR) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --start_cyc {self.start_cyc} --min_cyc {self.min_cyc} --max_cyc {self.max_cyc}\n\n"
+        self.makefile += "pyfsim: check ast_schedule.py \n"
+        self.makefile += f"\t$(PYTHON) ast_fsimulator.py -f $(AST_XML_flat) -l $(LOG_VAL_DIR) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --start_cyc {self.start_cyc} --min_cyc {self.min_cyc} --max_cyc {self.max_cyc} --period {self.period} --design_dir {self.design_folder}\n\n"
+
+    def _gen_fsim(self, mode="data"):
+        self.makefile += "#=============================\n"
+        self.makefile += "# Fault injection             \n"
+        self.makefile += "#=============================\n"
+        self.makefile += "fsim: fi_controller.py \n"
+        self.makefile += f"\t$(PYTHON) fi_controller.py -m '{mode}' -t {self.design_folder}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv -d {self.design_folder} -f 'cd {self.design_folder} && ./fi_sim_veri' -s {self.design_folder}/sig_list/fsim_sig_table.json"
+
 
 
     def generate(self):
@@ -111,45 +141,20 @@ class GenMakefile:
         self._gen_sig_table()
         self._gen_preprocess()
         self._gen_pysim()
+        self._gen_fsim("ctrl")
         print(self.makefile)
 
 
 if __name__ == "__main__":
 
-    #TODO
-    #tool = "python3"
-    #design_dir = "../Tinyriscv"
-    #top_module_name = "tinyriscv"
-    #tb_clk = "clk"
-    #tb_rst = "rst"
-    #hier_above_top = "tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv"
-    #AST = "AST.vc"
-    #AST_flat = "AST_flat.vc"
-    #start_cyc = 800
-    #min_cyc = 800
-    #max_cyc = 900
-
-    #gen = GenMakefile(tool, design_dir, top_module_name, tb_clk, tb_rst, hier_above_top, AST, AST_flat, start_cyc, min_cyc, max_cyc)
-    #
-    #    #gen = GenMakefile("python3", "../Tinyriscv", "tinyriscv", "clk", "rst", "tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv")
-    #gen.generate()
-    design = "picorv32"
-    tool = config[design]["tool"]
-    design_dir = config[design]["design_dir"]
-    top_module_name = config[design]["top_module_name"]
-    tb_clk = config[design]["tb_clk"]
-    tb_rst = config[design]["tb_rst"]
-    hier_above_top = config[design]["hier_above_top"]
-    ast_folder = config[design]["ast_folder"]
-    AST = config[design]["ast_vc"]
-    AST_flat = config[design]["ast_flat_vc"]
-    start_cyc = config[design]["start_cyc"]
-    min_cyc = config[design]["min_cyc"]
-    max_cyc = config[design]["max_cyc"]
-
-    gen = GenMakefile(tool, design_dir, top_module_name, tb_clk, tb_rst, hier_above_top, ast_folder, AST, AST_flat, start_cyc, min_cyc, max_cyc)
+    gen = GenMakefile(
+            design_name="picorv32_firmware", 
+            start_cyc=300000, 
+            period=2048,
+            pysim_mode="period"
+            )
     
-        #gen = GenMakefile("python3", "../Tinyriscv", "tinyriscv", "clk", "rst", "tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv")
+    #gen = GenMakefile("python3", "../Tinyriscv", "tinyriscv", "clk", "rst", "tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv")
     gen.generate()
 
 

@@ -11,17 +11,17 @@ import pickle
 import json
 
 class SimulatorPrepare(AstNodeClassify):
-    def __init__(self,ast,logic_value_file_dir,sig_list_dir):
+    def __init__(self,ast,logic_value_file_dir,sig_list_dir,design_dir):
         AstNodeClassify.__init__(self)
 
         self.ast = ast
 
         # duplicate ast -> get self.my_ast
-        self.ast_duplicator = AstDuplicate(self.ast)
+        self.ast_duplicator = AstDuplicate(self.ast,design_dir)
         self.my_ast = None
 
         # dump ast to xml file
-        self.ast_dumper = AstDump(self.ast)
+        self.ast_dumper = AstDump(self.ast,design_dir)
 
 
         # TODO
@@ -111,6 +111,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--file", type=str, help="AST path")                  # Positional argument
     parser.add_argument("--logic_value_dir", type=str, help="AST path")             # Positional argument
     parser.add_argument("--sig_list_dir", type=str, help="AST path")                # Positional argument
+    parser.add_argument("--design_dir", type=str, help="AST path")                # Positional argument
 
     # Step 3: Parse the arguments
     args = parser.parse_args()
@@ -122,6 +123,6 @@ if __name__ == "__main__":
         ast_file = args.file
         ast = Verilator_AST_Tree(ast_file)
 
-        sim_prep = SimulatorPrepare(ast,args.logic_value_dir,args.sig_list_dir)
+        sim_prep = SimulatorPrepare(ast,args.logic_value_dir,args.sig_list_dir,args.design_dir)
         sim_prep.preprocess()
 

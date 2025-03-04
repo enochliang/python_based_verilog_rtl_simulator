@@ -90,8 +90,9 @@ class GenFaultList:
 
 
 class FaultInjection(GenFaultList):
-    def __init__(self,sigtable_dir:str, hw_dir:str, ace_dir:str, fi_name:str="./fi_sim_veri"):
+    def __init__(self,sigtable_dir:str, hw_dir:str, ace_dir:str, fi_name:str="fi_sim_veri"):
         GenFaultList.__init__(self,sigtable_dir,ace_dir)
+        self.hw_dir = hw_dir
         self.fi_name = fi_name
         self.fsim_exe_file = f"{self.fi_name} > fsim.log"
 
@@ -132,6 +133,27 @@ class FaultInjection(GenFaultList):
 
         self.result_stat(mode="data")
 
+    def run_ctrl_fault_sim(self):
+
+        self._get_ace_fault_list()
+
+        tot = len(self.ctrl_fault_list)
+        cnt = 0
+        
+        print("[Progress] running fault injection...")
+        with tqdm(total=tot) as pbar:
+            for fi_case in self.ctrl_fault_list:
+                f = open("control.txt","w")
+                f.write(f"{fi_case[0]}\n{fi_case[1]}\n{fi_case[2]}")
+                f.close()
+                os.system(self.fsim_exe_file)
+                cnt += 1
+                if cnt % 100 == 0:
+                    pbar.update(100)
+        print("fault injection done.")
+
+        self.result_stat(mode="ctrl")
+
     def result_stat(self, mode:str):
         clock_cyc_col = []
         src_bit_col = []
@@ -155,11 +177,11 @@ class FaultInjection(GenFaultList):
         with tqdm(total=tot) as pbar:
             for fi_case in fault_list:
                 # Read faulty bit
-                f = open(f"result/result_C{fi_case[0]:07}_R{fi_case[1]:04}_B{fi_case[2]:04}.txt","r")
+                f = open(f"{self.hw_dir}/result/result_C{fi_case[0]:07}_R{fi_case[1]:04}_B{fi_case[2]:04}.txt","r")
                 faulty_values = f.read().split("\n")
                 f.close()
                 # Read golden value for unknown elimination
-                f = open(f"golden_value/golden_value_C{fi_case[0]+1:07}.txt")
+                f = open(f"{self.hw_dir}/golden_value/golden_value_C{fi_case[0]+1:07}.txt")
                 golden_values = f.read().split("\n")
                 f.close()
 
@@ -218,7 +240,7 @@ if __name__ == "__main__":
     parser.add_argument("-m",'--mode', type=str, help="fault injection mode [total, data, ctrl]")
     parser.add_argument("-t",'--rwtable_dir', type=str, help="rw-table directory")
     parser.add_argument("-d",'--hw_dir', type=str, help="hardware directory")
-    parser.add_argument("-f", "--fsim_dir", type=str, help="fault simulator directory")                  # Positional argument
+    parser.add_argument("-f", "--fi_name", type=str, help="fault simulator directory")                  # Positional argument
     parser.add_argument("-s", "--sigtable_dir", type=str, help="signal table directory")
 
     # Step 3: Parse the arguments
@@ -230,7 +252,6 @@ if __name__ == "__main__":
               ace_dir = args.rwtable_dir, 
               fi_name = args.fi_name
           )
-
 
     if args.mode == "total":
         inj.run_total_fault_sim()

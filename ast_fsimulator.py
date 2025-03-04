@@ -45,8 +45,8 @@ class FaultSimulatorExecute(SimulatorPrepare):
         exec_seq_true_block:  
         exec_seq_false_block: 
     """
-    def __init__(self,ast,logic_value_file_dir,sig_list_dir):
-        SimulatorPrepare.__init__(self,ast,logic_value_file_dir,sig_list_dir)
+    def __init__(self,ast,logic_value_file_dir,sig_list_dir,design_dir):
+        SimulatorPrepare.__init__(self,ast,logic_value_file_dir,sig_list_dir,design_dir)
 
         # Turn on if you want to reduce ctrl faults
         self.ctrl_fr_flag = True
@@ -835,8 +835,8 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
 
 class FaultSimulator(FaultSimulatorExecute):
-    def __init__(self, ast, logic_value_file_dir, sig_list_dir, start_cyc:int=0, end_cyc:int=1, period:int=64, min_cyc:int=0, max_cyc:int=1, logic_val_dir:str=""):
-        FaultSimulatorExecute.__init__(self,ast,logic_value_file_dir,sig_list_dir)
+    def __init__(self, ast, design_dir, logic_value_file_dir, sig_list_dir, start_cyc:int=0, end_cyc:int=1, period:int=64, min_cyc:int=0, max_cyc:int=1, logic_val_dir:str=""):
+        FaultSimulatorExecute.__init__(self,ast,logic_value_file_dir,sig_list_dir,design_dir)
 
         self.start_cyc = start_cyc
         self.end_cyc = end_cyc
@@ -848,6 +848,7 @@ class FaultSimulator(FaultSimulatorExecute):
         self.rw_table = {"cycle":[],"rw_event":[]}
 
         self.logic_value_file_dir = logic_val_dir
+        self.design_dir = design_dir
 
     def propagate(self):
         for subcircuit_id in self.my_ast.ordered_subcircuit_id_head:
@@ -899,11 +900,11 @@ class FaultSimulator(FaultSimulatorExecute):
 
     def dump_rw_table(self,mode:str):
         if mode == "period":
-            rw_table_dir = f"prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv"
+            rw_table_dir = f"{self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv"
         elif mode == "start-end":
-            rw_table_dir = f"prob_rw_table_{self.start_cyc}-{self.end_cyc}.csv"
+            rw_table_dir = f"{self.design_dir}/prob_rw_table_{self.start_cyc}-{self.end_cyc}.csv"
         elif mode == "full":
-            rw_table_dir = f"prob_rw_table_{self.min_cyc}-{self.max_cyc}.csv"
+            rw_table_dir = f"{self.design_dir}/prob_rw_table_{self.min_cyc}-{self.max_cyc}.csv"
         else:
             print("Unknown simulation mode")
         df = pd.DataFrame(self.rw_table)
@@ -987,10 +988,12 @@ if __name__ == "__main__":
     parser.add_argument("-l",'--logic_dir', type=str, help="Logic value path")
     parser.add_argument("-f", "--file", type=str, help="AST path")                  # Positional argument
     parser.add_argument("--logic_value_dir", type=str, help="AST path")           
+    parser.add_argument("--design_dir", type=str, help="AST path")           
     parser.add_argument("--sig_list_dir", type=str, help="AST path")             
     parser.add_argument("--start_cyc", type=str, help="AST path")             
     parser.add_argument("--min_cyc", type=str, help="AST path")             
     parser.add_argument("--max_cyc", type=str, help="AST path")             
+    parser.add_argument("--period", type=str, help="AST path")             
 
     # Step 3: Parse the arguments
     args = parser.parse_args()
@@ -1010,5 +1013,5 @@ if __name__ == "__main__":
 
         # parameter
         #ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
-        ast_sim = FaultSimulator(ast, start_cyc=int(args.start_cyc), min_cyc=int(args.min_cyc), max_cyc=int(args.max_cyc), logic_val_dir=log_dir, logic_value_file_dir=args.logic_value_dir, sig_list_dir=args.sig_list_dir)
-        ast_sim.simulate(mode="full")
+        ast_sim = FaultSimulator(ast, start_cyc=int(args.start_cyc), min_cyc=int(args.min_cyc), max_cyc=int(args.max_cyc), period=int(args.period), logic_val_dir=log_dir, logic_value_file_dir=args.logic_value_dir, sig_list_dir=args.sig_list_dir, design_dir=args.design_dir)
+        ast_sim.simulate(mode="period")

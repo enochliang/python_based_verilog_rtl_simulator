@@ -1,32 +1,42 @@
-config = {
-        "picorv32":{
-            "tool":"python3",
-            "design_dir":"/ibex/hardware/picorv32/benchmark_basicmath/",
+configs = {
+        "picorv32_basicmath":{
+            "python_cmd":"python3",
+            "design_folder":"picorv32/benchmark_basicmath",
             "top_module_name":"picorv32",
             "tb_clk":"clk",
             "tb_rst":"rst",
-            "hier_above_top":"top.uut",
-            "ast_folder":"ast",
-            "ast_vc":"AST.vc",
-            "ast_flat_vc":"AST_flat.vc",
-            "start_cyc":5,
-            "min_cyc":0,
-            "max_cyc":5,
-            "period":8
+            "top_hier":"top.uut",
+            "min_cyc":5,
+            "max_cyc":1028
+        },
+        "picorv32_firmware":{
+            "python_cmd":"python3",
+            "design_folder":"picorv32/benchmark_firmware",
+            "top_module_name":"picorv32_axi",
+            "tb_clk":"clk",
+            "tb_rst":"rst",
+            "top_hier":"top.uut",
+            "min_cyc":5,
+            "max_cyc":1028
+        },
+        "picorv32_dhrystone":{
+            "python_cmd":"python3",
+            "design_folder":"picorv32/benchmark_dhrystone",
+            "top_module_name":"picorv32",
+            "tb_clk":"clk",
+            "tb_rst":"rst",
+            "top_hier":"top.uut",
+            "min_cyc":5,
+            "max_cyc":1028
         },
         "tinyriscv":{
-            "tool":"python3",
-            "design_dir":"/ibex/hardware/picorv32/benchmark_basicmath/",
+            "python_cmd":"python3",
+            "design_folder":"picorv32/benchmark_basicmath",
             "top_module_name":"picorv32",
             "tb_clk":"clk",
             "tb_rst":"rst",
-            "hier_above_top":"top.uut",
-            "ast_folder":"ast",
-            "ast_vc":"AST.vc",
-            "ast_flat_vc":"AST_flat.vc",
-            "start_cyc":5,
+            "top_hier":"top.uut",
             "min_cyc":0,
-            "max_cyc":5,
-            "period":8
+            "max_cyc":5
         }
     }

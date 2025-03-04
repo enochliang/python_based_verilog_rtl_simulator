@@ -6,14 +6,15 @@ import json
 
 
 class AstDump:
-    def __init__(self,ast):
+    def __init__(self,ast,design_dir):
         self.ast = ast
+        self.design_dir = design_dir
 
     def dump(self):
         etree.indent(self.ast,space="  ")
-        with open("new_ast_dump.xml","w") as fp:
+        with open(self.design_dir+"/new_ast_dump.xml","w") as fp:
             fp.write(etree.tostring(self.ast.find("."),pretty_print=True).decode())
-        print("  Dumped <new_ast_dump.xml>!")
+        print(f"  Dumped {self.design_dir}/<new_ast_dump.xml>!")
 
 
 class AstDumpFsimSigTable:
