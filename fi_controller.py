@@ -108,8 +108,8 @@ class FaultInjection(GenFaultList):
         
         self.result_stat(mode="total")
 
-    def reg_level_dataframe(self):
-        reg_level_fault_effect = [{}]*(self.total_cyc)
+#    def reg_level_dataframe(self):
+#        reg_level_fault_effect = [{}]*(self.total_cyc)
 
 
     def run_data_fault_sim(self):
@@ -160,7 +160,7 @@ class FaultInjection(GenFaultList):
         dst_bit_col = []
         faulty_effect_class_col = []
 
-        reg_level_fault_effect = {}
+        #reg_level_fault_effect = {}
         
         print("[Progress] observing fault injection result...")
 
@@ -195,19 +195,19 @@ class FaultInjection(GenFaultList):
                     if len(faulty_values[idx]) != int(self.sig_dict["ff"][sig_name]):
                         raise RTLFSimulationError("Error: Width Not Match.",1)
                     else:
-                        prop_flag = False
+                        #prop_flag = False
                         for c_idx in range(width):
                             if golden_values[idx][width-1-c_idx] == "x":
                                 continue
                             if faulty_values[idx][width-1-c_idx] == "1":
-                                prop_flag = True
+                                #prop_flag = True
                                 dst_reg_list.append(f"{sig_name}[{c_idx}]")
-                    if prop_flag:
-                        if (cycle, src_reg_name) in reg_level_fault_effect:
-                            reg_level_fault_effect[cycle-self.start_cyc][src_reg_name][sig_name] += 1
-                        else:
-                            reg_level_fault_effect[cycle-self.start_cyc][src_reg_name] = {}
-                            reg_level_fault_effect[cycle-self.start_cyc][src_reg_name][sig_name] = 1
+                    #if prop_flag:
+                    #    if (cycle, src_reg_name) in reg_level_fault_effect:
+                    #        reg_level_fault_effect[cycle-self.start_cyc][src_reg_name][sig_name] += 1
+                    #    else:
+                    #        reg_level_fault_effect[cycle-self.start_cyc][src_reg_name] = {}
+                    #        reg_level_fault_effect[cycle-self.start_cyc][src_reg_name][sig_name] = 1
 
 
                 clock_cyc_col.append(cycle)
