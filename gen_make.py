@@ -129,7 +129,7 @@ class GenMakefile:
         self.makefile += "# Py-simulation               \n"
         self.makefile += "#=============================\n"
         self.makefile += "pyfsim: check ast_schedule.py \n"
-        self.makefile += f"\t$(PYTHON) ast_fsimulator.py -f $(AST_XML_flat) -l $(LOG_VAL_DIR) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --start_cyc {self.start_cyc} --min_cyc {self.min_cyc} --max_cyc {self.max_cyc} --period {self.period} --design_dir {self.design_folder}\n\n"
+        self.makefile += f"\t$(PYTHON) ast_fsimulator.py -f $(AST_XML_flat) -l $(LOG_VAL_DIR) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --start_cyc {self.start_cyc} --min_cyc {self.min_cyc} --max_cyc {self.max_cyc} --period {self.period} --design_dir {self.design_folder} --mode {self.pysim_mode}\n\n"
 
     def _gen_fsim(self, mode="data"):
         self.makefile += "#=============================\n"

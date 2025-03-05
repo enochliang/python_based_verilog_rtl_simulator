@@ -994,6 +994,7 @@ if __name__ == "__main__":
     parser.add_argument("--min_cyc", type=str, help="AST path")             
     parser.add_argument("--max_cyc", type=str, help="AST path")             
     parser.add_argument("--period", type=str, help="AST path")             
+    parser.add_argument("--mode", type=str, help="AST path")             
 
     # Step 3: Parse the arguments
     args = parser.parse_args()
@@ -1014,4 +1015,4 @@ if __name__ == "__main__":
         # parameter
         #ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
         ast_sim = FaultSimulator(ast, start_cyc=int(args.start_cyc), min_cyc=int(args.min_cyc), max_cyc=int(args.max_cyc), period=int(args.period), logic_val_dir=log_dir, logic_value_file_dir=args.logic_value_dir, sig_list_dir=args.sig_list_dir, design_dir=args.design_dir)
-        ast_sim.simulate(mode="period")
+        ast_sim.simulate(mode=args.mode)
