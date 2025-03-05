@@ -3,7 +3,7 @@ from config import *
 
 
 class GenMakefile:
-    def __init__(self, design_name:str, pysim_mode:str="full", start_cyc=None, period=None):
+    def __init__(self, design_name:str, pysim_mode:str="full", fsim_mode:str="full", start_cyc=None, period=None):
         config = configs[design_name]
 
         self.python_cmd = config["python_cmd"]
@@ -46,6 +46,7 @@ class GenMakefile:
         if period:
             self.period = period
         self.pysim_mode = pysim_mode
+        self.fsim_mode = fsim_mode
 
         self.makefile = ""
 
@@ -129,14 +130,14 @@ class GenMakefile:
         self.makefile += "# Py-simulation               \n"
         self.makefile += "#=============================\n"
         self.makefile += "pyfsim: check ast_schedule.py \n"
-        self.makefile += f"\t$(PYTHON) ast_fsimulator.py -f $(AST_XML_flat) -l $(LOG_VAL_DIR) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --start_cyc {self.start_cyc} --min_cyc {self.min_cyc} --max_cyc {self.max_cyc} --period {self.period} --design_dir {self.design_folder} --mode {self.pysim_mode}\n\n"
+        self.makefile += f"\t$(PYTHON) ast_fsimulator.py -f $(AST_XML_flat) -l $(LOG_VAL_DIR) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --start_cyc {self.start_cyc} --min_cyc {self.min_cyc} --max_cyc {self.max_cyc} --period {self.period} --design_dir {self.design_dir} --mode {self.pysim_mode}\n\n"
 
-    def _gen_fsim(self, mode="data"):
+    def _gen_fsim(self):
         self.makefile += "#=============================\n"
         self.makefile += "# Fault injection             \n"
         self.makefile += "#=============================\n"
         self.makefile += "fsim: fi_controller.py \n"
-        self.makefile += f"\t$(PYTHON) fi_controller.py -m '{mode}' -t {self.design_folder}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv -d {self.design_folder} -f 'cd {self.design_folder} && ./fi_sim_veri' -s {self.design_folder}/sig_list/fsim_sig_table.json"
+        self.makefile += f"\t$(PYTHON) fi_controller.py -m '{self.fsim_mode}' -t {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv -d {self.design_dir} -f 'cd {self.design_dir} && ./fi_sim_veri' -s {self.design_dir}/sig_list/fsim_sig_table.json"
 
 
 
@@ -147,7 +148,7 @@ class GenMakefile:
         self._gen_sig_table()
         self._gen_preprocess()
         self._gen_pysim()
-        self._gen_fsim("ctrl")
+        self._gen_fsim()
         print(self.makefile)
 
 
@@ -158,6 +159,7 @@ if __name__ == "__main__":
             start_cyc=300000, 
             period=2048,
             pysim_mode="period"
+            fsim_mode="data"
             )
     
     #gen = GenMakefile("python3", "../Tinyriscv", "tinyriscv", "clk", "rst", "tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv")

@@ -31,12 +31,13 @@ configs = {
         },
         "tinyriscv":{
             "python_cmd":"python3",
-            "design_folder":"picorv32/benchmark_basicmath",
-            "top_module_name":"picorv32",
+            "design_folder":"Tinyriscv",
+            "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",
-            "top_hier":"top.uut",
-            "min_cyc":0,
-            "max_cyc":5
+            "top_hier":"tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv",
+            "min_cyc":5,
+            "max_cyc":10000
+
         }
     }
