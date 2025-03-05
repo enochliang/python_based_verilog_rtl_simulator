@@ -158,7 +158,7 @@ if __name__ == "__main__":
             design_name="picorv32_firmware", 
             start_cyc=300000, 
             period=2048,
-            pysim_mode="period"
+            pysim_mode="period",
             fsim_mode="data"
             )
     

@@ -101,7 +101,7 @@ class FaultInjection(GenFaultList):
         self._get_all_fault_list()
 
         for fi_case in self.all_fault_list:
-            f = open("control.txt","w")
+            f = open(self.hw_dir+"/control.txt","w")
             f.write(f"{fi_case[0]}\n{fi_case[1]}\n{fi_case[2]}")
             f.close()
             os.system(self.fsim_exe_file)
@@ -122,7 +122,7 @@ class FaultInjection(GenFaultList):
         print("[Progress] running fault injection...")
         with tqdm(total=tot) as pbar:
             for fi_case in self.data_fault_list:
-                f = open("control.txt","w")
+                f = open(self.hw_dir+"/control.txt","w")
                 f.write(f"{fi_case[0]}\n{fi_case[1]}\n{fi_case[2]}")
                 f.close()
                 os.system(self.fsim_exe_file)
@@ -143,7 +143,7 @@ class FaultInjection(GenFaultList):
         print("[Progress] running fault injection...")
         with tqdm(total=tot) as pbar:
             for fi_case in self.ctrl_fault_list:
-                f = open("control.txt","w")
+                f = open(self.hw_dir+"/control.txt","w")
                 f.write(f"{fi_case[0]}\n{fi_case[1]}\n{fi_case[2]}")
                 f.close()
                 os.system(self.fsim_exe_file)
