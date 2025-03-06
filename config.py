@@ -29,6 +29,16 @@ configs = {
             "min_cyc":5,
             "max_cyc":1028
         },
+        "sha1":{
+            "python_cmd":"python3",
+            "design_folder":"sha1",
+            "top_module_name":"sha1_core",
+            "tb_clk":"tb_clk",
+            "tb_rst":"tb_reset_n",
+            "top_hier":"tb_sha1_core.dut",
+            "min_cyc":5,
+            "max_cyc":244
+        },
         "tinyriscv":{
             "python_cmd":"python3",
             "design_folder":"Tinyriscv",
@@ -38,6 +48,5 @@ configs = {
             "top_hier":"tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv",
             "min_cyc":5,
             "max_cyc":10000
-
         }
     }

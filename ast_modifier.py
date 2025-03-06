@@ -1,6 +1,8 @@
 from ast_analyzer import AstAnalyzer
 from ast_dump import *
 from exceptions import *
+from copy import deepcopy
+
 
 from lxml import etree
 
@@ -44,6 +46,40 @@ class AstNodeRemover:
     def remove_ast_node(self,node):
         node.getparent().remove(node)
 
+class AstCombLvSeperate:
+    def __init__(self,ast):
+        self.ast = ast
+        self.analyzer = AstAnalyzer(self.ast)
+
+    def seperate_comb_always_lv(self,output=False):
+        for always in self.ast.findall(".//always") + self.ast.findall(".//contassign"):
+            if always.find(".//sentree") != None:
+                continue
+            lv_set = set()
+            for assign in always.findall(".//assign"):
+                lv_name = self.analyzer.get_sig_name(assign.getchildren()[1])
+                lv_set.add(lv_name)
+            if len(lv_set) > 1:
+                if output == True:
+                    print("    <always> loc in "+always.attrib["loc"]+" ")
+                    print("    left-values in this <always> = ")
+                    pprint.pp(lv_set)
+                for i,name in enumerate(lv_set):
+                    always_alias = deepcopy(always)
+                    for assign in always_alias.findall(".//assign"):
+                        if self.analyzer.get_sig_name(assign.getchildren()[1]) != name:
+                            assign.getparent().remove(assign)
+                    if output == True:
+                        print(i,name)
+                        print("   [Add always_alias] => ")
+                        print(etree.tostring(always_alias, pretty_print=True).decode())
+                    always.getparent().append(always_alias)
+                if output == True:
+                    print("   [Remove original always] => ")
+                    print(etree.tostring(always, pretty_print=True).decode())
+                    print("-"*80)
+                always.getparent().remove(always)
+    
 class AstNodeMerger:
     def __init__(self,ast):
         self.ast = ast

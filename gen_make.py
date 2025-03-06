@@ -105,18 +105,18 @@ class GenMakefile:
         self.makefile += f"\t$(PYTHON) ast_sim_prepare.py -f $(AST_XML_flat) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --design_dir {self.design_dir}\n\n"
 
         self.makefile += "prepare_fsim_folder:\n"
-        self.makefile += f"\tmkdir -p {self.design_folder}/result\n"
-        self.makefile += f"\tmkdir -p {self.design_folder}/ff_value\n"
-        self.makefile += f"\tmkdir -p {self.design_folder}/golden_value\n\n"
+        self.makefile += f"\tmkdir -p {self.design_dir}/result\n"
+        self.makefile += f"\tmkdir -p {self.design_dir}/ff_value\n"
+        self.makefile += f"\tmkdir -p {self.design_dir}/golden_value\n\n"
         self.makefile += "prepare_pysim_folder:\n"
-        self.makefile += f"\tmkdir -p {self.design_folder}/pysim_ff_value\n\n"
+        self.makefile += f"\tmkdir -p {self.design_dir}/pysim_ff_value\n\n"
 
         self.makefile += "clear_fsim_folder:\n"
-        self.makefile += f"\trm -rf {self.design_folder}/result\n"
-        self.makefile += f"\trm -rf {self.design_folder}/ff_value\n"
-        self.makefile += f"\trm -rf {self.design_folder}/golden_value\n\n"
+        self.makefile += f"\trm -rf {self.design_dir}/result\n"
+        self.makefile += f"\trm -rf {self.design_dir}/ff_value\n"
+        self.makefile += f"\trm -rf {self.design_dir}/golden_value\n\n"
         self.makefile += "clear_pysim_folder:\n"
-        self.makefile += f"\trm -rf {self.design_folder}/pysim_ff_value\n\n"
+        self.makefile += f"\trm -rf {self.design_dir}/pysim_ff_value\n\n"
         
         self.makefile += "gen_pysim_wrap: " + self.sig_list_dir + "/pysim_sig_table.json \n"
         self.makefile += f"\t$(PYTHON) gen_pysim_wrapper.py --tb_clk {self.tb_clk} --tb_rst {self.tb_rst} --top_module_name {self.top_module_name} --hier_above_top {self.hier_above_top} --ff_value_dir {self.LOG_VAL_DIR } --sig_list_dir {self.sig_list_dir}\n\n"
@@ -155,9 +155,9 @@ class GenMakefile:
 if __name__ == "__main__":
 
     gen = GenMakefile(
-            design_name="picorv32_firmware", 
-            start_cyc=300000, 
-            period=2048,
+            design_name="sha1", 
+            start_cyc=5, 
+            period=238,
             pysim_mode="period",
             fsim_mode="data"
             )

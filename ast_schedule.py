@@ -18,6 +18,7 @@ class AstSchedulePreprocess:
         self.merger = AstNodeMerger(self.ast)
         self.marker = AstInfoMarker(self.ast)
         self.numberer = AstNumberer(self.ast)
+        self.seperate = AstCombLvSeperate(self.ast)
 
     def preprocess(self):
         """ 
@@ -29,6 +30,7 @@ class AstSchedulePreprocess:
 
         #TODO
         # split comb always block
+        self.seperate.seperate_comb_always_lv(output=True)
 
         self.remover.remove_comment_node()
         self.remover.remove_integer()
