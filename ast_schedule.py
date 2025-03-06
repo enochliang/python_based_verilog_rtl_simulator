@@ -30,7 +30,7 @@ class AstSchedulePreprocess:
 
         #TODO
         # split comb always block
-        self.seperate.seperate_comb_always_lv(output=True)
+        self.seperate.seperate_comb_always_lv()
 
         self.remover.remove_comment_node()
         self.remover.remove_integer()

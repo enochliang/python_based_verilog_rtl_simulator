@@ -157,7 +157,7 @@ if __name__ == "__main__":
     gen = GenMakefile(
             design_name="sha1", 
             start_cyc=5, 
-            period=238,
+            period=239,
             pysim_mode="period",
             fsim_mode="data"
             )
