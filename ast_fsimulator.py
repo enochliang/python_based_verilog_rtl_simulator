@@ -55,11 +55,18 @@ class FaultSimulatorExecute(SimulatorPrepare):
     #-----------------------------------------------------------------------------
     # RTL simulation functions (for simulation entries)
     def exec_comb_entry(self,node):
-        lv_name = node.attrib["lv_name"]
+        # comb left value node to check
+        self.target_node_set = set()
+
+        #lv_name = node.attrib["lv_name"]
         self.exec_comb(node,{})
 
         # check if the calculated result match the dumped one.
-        self.check_comb_value(lv_name)
+        #self.check_comb_value(lv_name)
+        if self.check_comb_values():
+            node.tostring()
+            raise SimulationError("computed value & dumped value mismatch.",6)
+
 
     def exec_seq_entry(self,node):
         # sequential left value node to check
@@ -82,14 +89,36 @@ class FaultSimulatorExecute(SimulatorPrepare):
     #------------------------------------------------------------------------------
     # Computing Result Verification
     #------------------------------------------------------------------------------
-    def check_comb_value(self,lv_name):
-        init_value = self.my_ast.var_node(lv_name).cur_value
-        final_value = self.my_ast.var_node(lv_name).value
-        if "__Vdfg" not in lv_name and init_value != final_value:
-            print(f"lv_name = {lv_name}")
-            print(f"    init_value = {init_value}")
-            print(f"    final_value = {final_value}")
-            raise SimulationError("computed value & dumped value mismatch.",6)
+    #def check_comb_value(self,lv_name):
+    #    init_value = self.my_ast.var_node(lv_name).cur_value
+    #    final_value = self.my_ast.var_node(lv_name).value
+    #    if "__Vdfg" not in lv_name and init_value != final_value:
+    #        print(f"lv_name = {lv_name}")
+    #        print(f"    init_value = {init_value}")
+    #        print(f"    final_value = {final_value}")
+    #        raise SimulationError("computed value & dumped value mismatch.",6)
+
+    def check_comb_value(self,target_node):
+        #init_value = self.my_ast.var_node(lv_name).cur_value
+        #final_value = self.my_ast.var_node(lv_name).value
+        #if "__Vdfg" not in lv_name and init_value != final_value:
+        #    print(f"lv_name = {lv_name}")
+        #    print(f"    init_value = {init_value}")
+        #    print(f"    final_value = {final_value}")
+        if "__Vdfg" not in target_node.name:
+            if target_node.cur_value != target_node.value:
+                print(f"Py-simulator value mismatch: signal name = {target_node.name}, init_value = {target_node.cur_value}, final_value = {target_node.value}")
+                return True
+            else:
+                return False
+
+    def check_comb_values(self):
+        flag = False
+        for target_node in self.target_node_set:
+            if self.check_comb_value(target_node):
+                flag = True
+        self.target_node_set = set()
+        return flag
 
     def check_seq_values(self):
         flag = False
@@ -214,6 +243,9 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
         # get the target node to propagate fault to.
         target_node = self.get_target_node(left_node)
+        # add left value node for checking
+        self.target_node_set.add(target_node)
+
 
         # propagate fault to target signal
         data_flist = right_node.ifault_list

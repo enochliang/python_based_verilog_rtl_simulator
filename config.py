@@ -39,6 +39,16 @@ configs = {
             "min_cyc":5,
             "max_cyc":244
         },
+        "FFTx32":{
+            "python_cmd":"python3",
+            "design_folder":"src",
+            "top_module_name":"FFT",
+            "tb_clk":"clk",
+            "tb_rst":"rst_n",
+            "top_hier":"FFT_CORE",
+            "min_cyc":5,
+            "max_cyc":80
+        },
         "tinyriscv":{
             "python_cmd":"python3",
             "design_folder":"Tinyriscv",

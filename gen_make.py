@@ -139,6 +139,13 @@ class GenMakefile:
         self.makefile += "fsim: fi_controller.py \n"
         self.makefile += f"\t$(PYTHON) fi_controller.py -m '{self.fsim_mode}' -t {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv -d {self.design_dir} -f 'cd {self.design_dir} && ./fi_sim_veri' -s {self.design_dir}/sig_list/fsim_sig_table.json"
 
+    def _gen_ace_analysis(self):
+        self.makefile += "#=============================\n"
+        self.makefile += "# Ace Analysis                \n"
+        self.makefile += "#=============================\n"
+        self.makefile += "ace: \n"
+        self.makefile += f"\t$(PYTHON) ace_analysis.py --rw_table_dir {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv --sig_list_dir {self.design_dir}/sig_list/fsim_sig_table.json\n"
+
 
 
     def generate(self):
@@ -149,6 +156,7 @@ class GenMakefile:
         self._gen_preprocess()
         self._gen_pysim()
         self._gen_fsim()
+        self._gen_ace_analysis()
         print(self.makefile)
 
 
