@@ -110,6 +110,7 @@ class FaultSimulatorExecute(SimulatorPrepare):
                 print(f"Py-simulator value mismatch: signal name = {target_node.name}, init_value = {target_node.cur_value}, final_value = {target_node.value}")
                 return True
             else:
+                #print(f"Py-simulator value match: signal name = {target_node.name}, init_value = {target_node.cur_value}, final_value = {target_node.value}")
                 return False
 
     def check_comb_values(self):

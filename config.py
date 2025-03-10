@@ -41,7 +41,7 @@ configs = {
         },
         "FFTx32":{
             "python_cmd":"python3",
-            "design_folder":"src",
+            "design_folder":"FFTx32/src",
             "top_module_name":"FFT",
             "tb_clk":"clk",
             "tb_rst":"rst_n",
@@ -49,9 +49,19 @@ configs = {
             "min_cyc":5,
             "max_cyc":80
         },
+        "vSPI":{
+            "python_cmd":"python3",
+            "design_folder":"vSPI",
+            "top_module_name":"spiifc",
+            "tb_clk":"SysClk",
+            "tb_rst":"Reset",
+            "top_hier":"spiifc_tb2.uut",
+            "min_cyc":5,
+            "max_cyc":225
+        },
         "tinyriscv":{
             "python_cmd":"python3",
-            "design_folder":"Tinyriscv",
+            "design_folder":"tinyriscv",
             "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",
