@@ -1,3 +1,4 @@
+import pprint
 import json
 import argparse
 import pandas as pd
@@ -139,11 +140,27 @@ class AceAnalysis:
         self.unACE_int = []
 
     def pre_ace_info(self):
+        ctrl_fault_count = 0
+        data_fault_count = 0
+        for rw_events in self.rw_table:
+            for r_reg in rw_events:
+                if len(rw_events[r_reg]["ctrl"]) > 0:
+                    ctrl_fault_count += self.sig_dict["ff"][r_reg]
+                elif len(rw_events[r_reg]["w"]) == 0 and len(rw_events[r_reg]["stay"]) != 0:
+                    pass
+                else:
+                    data_fault_count += self.sig_dict["ff"][r_reg]
+
+
+
         print("[Pre-ACE information]")
         print(f"  - Start Cycle of Simulation: \t{self.start_cyc}")
         print(f"  - Total Number of Simulation Cycles: \t{self.tot_cyc}")
         print(f"  - Total Number of Register Bit: \t{self.tot_bit_num}")
         print(f"  - Total Transient Faults: \t{self.tot_fault_num}")
+        print(f"  - ACE remained Faults: \t{data_fault_count+ctrl_fault_count}")
+        print(f"  - ACE remained data Faults: \t{data_fault_count}")
+        print(f"  - ACE remained ctrl Faults: \t{ctrl_fault_count}")
         print(80*"-")
 
     def prop_graph_construct(self):
@@ -270,7 +287,13 @@ class AceAnalysis:
         Note: Assumes prop_graph_construct() and igraph_construct() have been called to populate the graph.
         """
         # Step 1: Mark all unACE nodes as 'masked' initially
+        unace_fault_count = 0
         for node_idx in self.unACE_int:
+            node = self.prop_graph_nodes[node_idx]
+            reg = node.reg_name
+            duration = node.end - node.start + 1
+            width = self.sig_dict["ff"][reg]
+            unace_fault_count += duration * width
             self.prop_graph_nodes[node_idx].er_type = "masked"
             self.pg_graph.vs[node_idx]["er_type"] = "masked"
     
@@ -314,8 +337,36 @@ class AceAnalysis:
         # Step 3: Print summary for verification
         masked_count = sum(1 for node in self.prop_graph_nodes if node.er_type == "masked")
         masked_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start+1) for node in self.prop_graph_nodes if node.er_type == "masked")
+        redundant_eq_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start) for node in self.prop_graph_nodes if node.er_type == "ace")
         print(f"   Marked {masked_count} nodes as 'masked' in the graph.")
-        print(f"   Marked {masked_fault_count} bits as 'masked' in the graph.")
+
+        print(f"   - un-ACE fault count = {unace_fault_count}")
+        print(f"   - DUP fault count = {masked_fault_count}")
+        print(f"   - redundant equvalent fault count = {redundant_eq_fault_count}")
+
+    def output_pruned_rw_table(self):
+        self.rw_table_pruned = {"cycle":[cyc for cyc in range(self.start_cyc, self.start_cyc+self.tot_cyc)],"rw_event":[[]]*self.tot_cyc}
+        start_cyc = self.start_cyc
+        for node in self.prop_graph_nodes:
+            if node.er_type == "ace":
+                r_reg = node.reg_name
+                r_cyc = node.end
+                rw_event = self.rw_table[r_cyc-start_cyc][r_reg]
+                new_rw_event = {"r":r_reg, 
+                                "w":rw_event["w"],
+                                "ctrl":rw_event["w"],
+                                "stay":rw_event["w"],
+                                "start_cyc":node.start,
+                                "end_cyc":node.end}
+                self.rw_table_pruned["rw_event"][r_cyc-start_cyc].append(new_rw_event)
+        #pprint.pp(self.rw_table_pruned)
+
+        df = pd.DataFrame(self.rw_table_pruned)
+        new_rw_table_dir = rw_table_dir.replace(".csv","")+"_pruned.csv"
+        df.to_csv(new_rw_table_dir)
+        print(f"Dumped Pruned RW-table file: <{new_rw_table_dir}>")
+
+
 
 # -------------------
 # Main Execution
@@ -341,3 +392,4 @@ if __name__ == "__main__":
     ace.prop_graph_construct()
     g = ace.igraph_construct()
     ace.mark_masked()  # Add this line to apply the masking logic
+    ace.output_pruned_rw_table()

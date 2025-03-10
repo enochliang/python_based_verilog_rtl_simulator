@@ -161,12 +161,19 @@ class GenMakefile:
 if __name__ == "__main__":
 
     gen = GenMakefile(
-            design_name="picorv32_firmware", 
-            start_cyc=300000, 
-            period=2048,
+            design_name="sha1", 
+            start_cyc=5, 
+            period=239,
             pysim_mode="period",
             fsim_mode="data"
             )
+    #gen = GenMakefile(
+    #        design_name="picorv32_firmware", 
+    #        start_cyc=300000, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="data"
+    #        )
     
     #gen = GenMakefile("python3", "../Tinyriscv", "tinyriscv", "clk", "rst", "tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv")
     gen.generate()

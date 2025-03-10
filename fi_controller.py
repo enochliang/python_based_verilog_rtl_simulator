@@ -47,7 +47,7 @@ class GenFaultList:
             rw_events = ast.literal_eval(rw_events)
             rw_row = {}
             for rw_event in rw_events:
-                rw_row[rw_event["r"]] = {"w":set([w_event for w_event in rw_event["w"]]), "stay":set([w_event for w_event in rw_event["stay"]]), "ctrl":set([w_event for w_event in rw_event["ctrl"]])}
+                rw_row[rw_event["r"]] = {"w":set([w_event for w_event in rw_event["w"]]), "stay":set([w_event for w_event in rw_event["stay"]]), "ctrl":set([w_event for w_event in rw_event["ctrl"]]), "start_cyc":rw_event["start_cyc"], "end_cyc":rw_event["end_cyc"]}
             self.rw_table_list.append(rw_row)
 
 
@@ -70,16 +70,20 @@ class GenFaultList:
                 if len(rw_row[r_event]["ctrl"]) > 0:
                     width = self.sig_dict["ff"][r_event]
                     idx = self.sig_name_2_idx_map[r_event]
+                    start_cyc = rw_row[r_event]["start_cyc"]
+                    end_cyc = rw_row[r_event]["end_cyc"]
                     for bit in range(width):
-                        self.ctrl_fault_list.append( (cyc+self.start_cyc, idx, bit) )
+                        self.ctrl_fault_list.append( (cyc+self.start_cyc, idx, bit, start_cyc, end_cyc) )
                     continue
 
                 if len(rw_row[r_event]["w"]) == 0:
                     continue
                 width = self.sig_dict["ff"][r_event]
                 idx = self.sig_name_2_idx_map[r_event]
+                start_cyc = rw_row[r_event]["start_cyc"]
+                end_cyc = rw_row[r_event]["end_cyc"]
                 for bit in range(width):
-                    self.data_fault_list.append( (cyc+self.start_cyc, idx, bit) )
+                    self.data_fault_list.append( (cyc+self.start_cyc, idx, bit, start_cyc, end_cyc) )
         print(f"ace fault list obtained")
         print(f"total data fault injection = {len(self.data_fault_list)}")
         print(f"total ctrl fault injection = {len(self.ctrl_fault_list)}")
@@ -159,6 +163,7 @@ class FaultInjection(GenFaultList):
         src_bit_col = []
         dst_bit_col = []
         faulty_effect_class_col = []
+        equivalent_cyc_col = []
 
         #reg_level_fault_effect = {}
         
@@ -213,6 +218,10 @@ class FaultInjection(GenFaultList):
                 clock_cyc_col.append(cycle)
                 src_bit_col.append(f"{src_reg_name}[{fi_case[2]}]")
                 dst_bit_col.append(dst_reg_list)
+
+                equivalent_cyc = fi_case[4] - fi_case[3] + 1
+                equivalent_cyc_col.append(equivalent_cyc)
+
                 if dst_reg_list == []:
                     faulty_effect_class_col.append("masked")
                 elif len(dst_reg_list) == 1:
@@ -226,7 +235,7 @@ class FaultInjection(GenFaultList):
                     pbar.update(100)
 
 
-        df = pd.DataFrame({"cycle":clock_cyc_col,"src_bit":src_bit_col,"dst_bit":dst_bit_col,"fault_effect":faulty_effect_class_col})
+        df = pd.DataFrame({"cycle":clock_cyc_col,"src_bit":src_bit_col,"dst_bit":dst_bit_col,"fault_effect":faulty_effect_class_col,"equivalent_cyc":equivalent_cyc_col})
         df.to_csv(f"{self.hw_dir}/fault_sim_result({mode}).csv")
 
 
