@@ -137,7 +137,7 @@ class GenMakefile:
         self.makefile += "# Fault injection             \n"
         self.makefile += "#=============================\n"
         self.makefile += "fsim: fi_controller.py \n"
-        self.makefile += f"\t$(PYTHON) fi_controller.py -m '{self.fsim_mode}' -t {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv -d {self.design_dir} -f 'cd {self.design_dir} && ./fi_sim_veri' -s {self.design_dir}/sig_list/fsim_sig_table.json\n\n"
+        self.makefile += f"\t$(PYTHON) fi_controller.py -m '{self.fsim_mode}' -t {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}_pruned.csv -d {self.design_dir} -f 'cd {self.design_dir} && ./fi_sim_veri' -s {self.design_dir}/sig_list/fsim_sig_table.json\n\n"
 
     def _gen_ace_analysis(self):
         self.makefile += "#=============================\n"
@@ -160,17 +160,24 @@ class GenMakefile:
 
 if __name__ == "__main__":
 
+    #gen = GenMakefile(
+    #        design_name="picorv32_basicmath", 
+    #        start_cyc=5, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="data"
+    #        )
     gen = GenMakefile(
-            design_name="sha1", 
-            start_cyc=5, 
-            period=239,
+            design_name="picorv32_firmware", 
+            start_cyc=300000, 
+            period=2048,
             pysim_mode="period",
             fsim_mode="data"
             )
     #gen = GenMakefile(
-    #        design_name="picorv32_firmware", 
-    #        start_cyc=300000, 
-    #        period=2048,
+    #        design_name="sha1", 
+    #        start_cyc=5, 
+    #        period=239,
     #        pysim_mode="period",
     #        fsim_mode="data"
     #        )

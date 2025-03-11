@@ -336,34 +336,44 @@ class AceAnalysis:
     
         # Step 3: Print summary for verification
         masked_count = sum(1 for node in self.prop_graph_nodes if node.er_type == "masked")
-        masked_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start+1) for node in self.prop_graph_nodes if node.er_type == "masked")
+        self.unace_fault_count = unace_fault_count
+        dup_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start+1) for node in self.prop_graph_nodes if node.er_type == "masked") - unace_fault_count
+        self.dup_fault_count = dup_fault_count
         redundant_eq_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start) for node in self.prop_graph_nodes if node.er_type == "ace")
+        self.redundant_eq_fault_count = redundant_eq_fault_count
+        self.remained_fault = self.tot_fault_num - unace_fault_count - dup_fault_count - redundant_eq_fault_count
         print(f"   Marked {masked_count} nodes as 'masked' in the graph.")
 
         print(f"   - un-ACE fault count = {unace_fault_count}")
-        print(f"   - DUP fault count = {masked_fault_count}")
+        print(f"   - DUP fault count = {dup_fault_count}")
         print(f"   - redundant equvalent fault count = {redundant_eq_fault_count}")
 
     def output_pruned_rw_table(self):
         self.rw_table_pruned = {"cycle":[cyc for cyc in range(self.start_cyc, self.start_cyc+self.tot_cyc)],"rw_event":[[]]*self.tot_cyc}
         start_cyc = self.start_cyc
-        for node in self.prop_graph_nodes:
+        for idx, node in enumerate(self.prop_graph_nodes):
             if node.er_type == "ace":
                 r_reg = node.reg_name
                 r_cyc = node.end
                 rw_event = self.rw_table[r_cyc-start_cyc][r_reg]
                 new_rw_event = {"r":r_reg, 
-                                "w":rw_event["w"],
-                                "ctrl":rw_event["w"],
-                                "stay":rw_event["w"],
+                                "w":list(rw_event["w"]),
+                                "ctrl":list(rw_event["ctrl"]),
+                                "stay":list(rw_event["stay"]),
                                 "start_cyc":node.start,
                                 "end_cyc":node.end}
-                self.rw_table_pruned["rw_event"][r_cyc-start_cyc].append(new_rw_event)
+                self.rw_table_pruned["rw_event"][r_cyc-start_cyc] = self.rw_table_pruned["rw_event"][r_cyc-start_cyc]+[new_rw_event]
         #pprint.pp(self.rw_table_pruned)
 
         df = pd.DataFrame(self.rw_table_pruned)
         new_rw_table_dir = rw_table_dir.replace(".csv","")+"_pruned.csv"
         df.to_csv(new_rw_table_dir)
+        ace_result = {"total_fault":self.tot_fault_num,
+                      "unACE_fault":self.unace_fault_count,
+                      "dup_fault":self.dup_fault_count,
+                      "eq_fault":self.redundant_eq_fault_count,
+                      "remain_fault":self.remained_fault
+                      }
         print(f"Dumped Pruned RW-table file: <{new_rw_table_dir}>")
 
 

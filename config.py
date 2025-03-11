@@ -7,7 +7,7 @@ configs = {
             "tb_rst":"rst",
             "top_hier":"top.uut",
             "min_cyc":5,
-            "max_cyc":1028
+            "max_cyc":2675
         },
         "picorv32_firmware":{
             "python_cmd":"python3",
@@ -17,7 +17,7 @@ configs = {
             "tb_rst":"rst",
             "top_hier":"top.uut",
             "min_cyc":5,
-            "max_cyc":1028
+            "max_cyc":388059
         },
         "picorv32_dhrystone":{
             "python_cmd":"python3",
@@ -27,7 +27,7 @@ configs = {
             "tb_rst":"rst",
             "top_hier":"top.uut",
             "min_cyc":5,
-            "max_cyc":1028
+            "max_cyc":19112
         },
         "sha1":{
             "python_cmd":"python3",

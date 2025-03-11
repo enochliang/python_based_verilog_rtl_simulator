@@ -236,7 +236,9 @@ class FaultInjection(GenFaultList):
 
 
         df = pd.DataFrame({"cycle":clock_cyc_col,"src_bit":src_bit_col,"dst_bit":dst_bit_col,"fault_effect":faulty_effect_class_col,"equivalent_cyc":equivalent_cyc_col})
-        df.to_csv(f"{self.hw_dir}/fault_sim_result({mode}).csv")
+        result_dir = f"{self.hw_dir}/fault_sim_result({mode}).csv"
+        df.to_csv(result_dir)
+        print(f"Dumped <{result_dir}>")
 
 
                             
