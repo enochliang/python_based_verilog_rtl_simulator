@@ -179,7 +179,7 @@ if __name__ == "__main__":
     gen = GenMakefile(
             design_name="picorv32_dhrystone", 
             start_cyc=5, 
-            period=2048,
+            period=20,
             pysim_mode="period",
             fsim_mode="data"
             )

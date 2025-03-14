@@ -24,7 +24,7 @@ configs = {
             "design_folder":"picorv32/benchmark_dhrystone",
             "top_module_name":"picorv32",
             "tb_clk":"clk",
-            "tb_rst":"rst",
+            "tb_rst":"resetn",
             "top_hier":"top.uut",
             "min_cyc":5,
             "max_cyc":19112
