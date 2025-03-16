@@ -814,11 +814,113 @@ class FaultSimulatorExecute(SimulatorPrepare):
 
 
     #----------------------------------------------------
+    def get_seq_sel_fault(self,node):
+        if node.tag == "const":
+            return {}
+        elif node.tag == "varref":
+            return self.get_seq_sel_fault(node.node)
+        elif node.tag == "var":
+            flist = {}
+            for f in node.fault_list:
+                if f[1] == "stay":
+                    flist[(f[0],"data")] = node.fault_list[f]
+                else:
+                    flist[f] = node.fault_list[f]
+            return flist
+        elif node.tag == "unpackarray":
+            flist = {}
+            for child in node.children:
+                child_flist = self.get_seq_sel_fault(child)
+                self.merge_flist(child_flist, flist)
+            return flist
+        else:
+            return node.fault_list
+
+
     def prop_seq_sel_fault(self,node):
-        pass
+        if node.tag == "sel":
+            sel_flist = {}
+            for child in node.children[1:]:
+                child_flist = self.get_seq_sel_fault(child)
+                self.merge_flist(child_flist, sel_flist)
+            self.assign_seq_sel_fault(node.children[0], sel_flist)
+            self.prop_seq_sel_fault(node.children[0])
+        elif node.tag == "arraysel":
+            sel_flist = self.get_seq_sel_fault(node.children[1])
+            self.assign_seq_sel_fault(node.children[0], sel_flist)
+            self.prop_seq_sel_fault(node.children[0])
+        elif node.tag == "varref":
+            pass
+        elif node.tag == "const":
+            pass
+        else:
+            pass
+
+    def assign_seq_sel_fault(self, node, flist):
+        if node.tag == "varref":
+            self.assign_seq_sel_fault(node.ref_node, flist)
+        elif node.tag == "unpackarray":
+            for child in node.children:
+                self.assign_seq_sel_fault(child, flist)
+        elif node.tag == "var":
+            ctrl_flist = {}
+            for f in flist: 
+                ctrl_flist[(f[0],"ctrl")] = flist[f]
+            print(ctrl_flist)
+            print(node.name)
+            self.merge_flist(ctrl_flist, node.fault_list)
+            print(node.fault_list)
+
+    def get_comb_sel_fault(self,node):
+        if node.tag == "const":
+            return {}
+        elif node.tag == "varref":
+            return self.get_comb_sel_fault(node.node)
+        elif node.tag == "var":
+            flist = {}
+            for f in node.fault_list:
+                if f[1] == "stay":
+                    flist[(f[0],"data")] = node.fault_list[f]
+                else:
+                    flist[f] = node.fault_list[f]
+            return flist
+        elif node.tag == "unpackarray":
+            flist = {}
+            for child in node.children:
+                child_flist = self.get_comb_sel_fault(child)
+                self.merge_flist(child_flist, flist)
+            return flist
+        else:
+            return node.fault_list
+
 
     def prop_comb_sel_fault(self,node):
-        pass
+        if node.tag == "sel":
+            sel_flist = {}
+            for child in node.children[1:]:
+                child_flist = self.get_comb_sel_fault(child)
+                self.merge_flist(child_flist, sel_flist)
+            self.assign_comb_sel_fault(node.children[0], sel_flist)
+            self.prop_comb_sel_fault(node.children[0])
+        elif node.tag == "arraysel":
+            sel_flist = self.get_comb_sel_fault(node.children[1])
+            self.assign_comb_sel_fault(node.children[0], sel_flist)
+            self.prop_comb_sel_fault(node.children[0])
+        elif node.tag == "varref":
+            pass
+        elif node.tag == "const":
+            pass
+        else:
+            pass
+
+    def assign_comb_sel_fault(self, node, flist):
+        if node.tag == "varref":
+            self.assign_comb_sel_fault(node.ref_node, flist)
+        elif node.tag == "unpackarray":
+            for child in node.children:
+                self.assign_comb_sel_fault(child, flist)
+        elif node.tag == "var":
+            self.merge_flist(flist, node.fault_list)
 
     #----------------------------------------------------
     def get_target_node(self,node):
