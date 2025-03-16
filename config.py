@@ -59,14 +59,64 @@ configs = {
             "min_cyc":5,
             "max_cyc":225
         },
-        "tinyriscv":{
+            "tinyriscv_qsort":{
             "python_cmd":"python3",
-            "design_folder":"tinyriscv",
+            "design_folder":"benchmark_qsort",
             "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",
             "top_hier":"tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv",
             "min_cyc":5,
-            "max_cyc":10000
+            "max_cyc":669847
+        },
+        "tinyriscv_median":{
+            "python_cmd":"python3",
+            "design_folder":"benchmark_median",
+            "top_module_name":"tinyriscv",
+            "tb_clk":"clk",
+            "tb_rst":"rst",
+            "top_hier":"tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv",
+            "min_cyc":5,
+            "max_cyc":51448
+        },
+        "tinyriscv_towers":{
+            "python_cmd":"python3",
+            "design_folder":"benchmark_towers",
+            "top_module_name":"tinyriscv",
+            "tb_clk":"clk",
+            "tb_rst":"rst",
+            "top_hier":"tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv",
+            "min_cyc":5,
+            "max_cyc":29951
+        },
+        "tinyriscv_vvadd":{
+            "python_cmd":"python3",
+            "design_folder":"benchmark_vvadd",
+            "top_module_name":"tinyriscv",
+            "tb_clk":"clk",
+            "tb_rst":"rst",
+            "top_hier":"tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv",
+            "min_cyc":5,
+            "max_cyc":29707
+        },
+        "tinyriscv_multiply":{
+            "python_cmd":"python3",
+            "design_folder":"benchmark_multiply",
+            "top_module_name":"tinyriscv",
+            "tb_clk":"clk",
+            "tb_rst":"rst",
+            "top_hier":"tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv",
+            "min_cyc":5,
+            "max_cyc":101996
+        },
+        "tinyriscv_rsort":{
+            "python_cmd":"python3",
+            "design_folder":"benchmark_rsort",
+            "top_module_name":"tinyriscv",
+            "tb_clk":"clk",
+            "tb_rst":"rst",
+            "top_hier":"tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv",
+            "min_cyc":5,
+            "max_cyc":852456
         }
     }

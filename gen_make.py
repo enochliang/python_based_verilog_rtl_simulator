@@ -181,7 +181,7 @@ if __name__ == "__main__":
             start_cyc=5, 
             period=20,
             pysim_mode="period",
-            fsim_mode="data"
+            fsim_mode="ctrl"
             )
     #gen = GenMakefile(
     #        design_name="sha1", 
@@ -190,6 +190,49 @@ if __name__ == "__main__":
     #        pysim_mode="period",
     #        fsim_mode="data"
     #        )
+    #gen = GenMakefile(
+    #        design_name="tinyriscv_qsort", 
+    #        start_cyc=5, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="data"
+    #        )
+    #gen = GenMakefile(
+    #        design_name="tinyriscv_rsort", 
+    #        start_cyc=579, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="data"
+    #        )
+    #gen = GenMakefile(
+    #        design_name="tinyriscv_median", 
+    #        start_cyc=579, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="data"
+    #        )
+    #gen = GenMakefile(
+    #        design_name="tinyriscv_multiply", 
+    #        start_cyc=5600, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="data"
+    #        )
+    #gen = GenMakefile(
+    #        design_name="tinyriscv_towers", 
+    #        start_cyc=4700, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="data"
+    #        )
+    #gen = GenMakefile(
+    #        design_name="tinyriscv_vvadd", 
+    #        start_cyc=4678, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="data"
+    #        )
+
     
     #gen = GenMakefile("python3", "../Tinyriscv", "tinyriscv", "clk", "rst", "tinyriscv_soc_tb.tinyriscv_soc_top_0.u_tinyriscv")
     gen.generate()
