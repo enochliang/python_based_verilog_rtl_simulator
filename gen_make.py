@@ -129,7 +129,7 @@ class GenMakefile:
         self.makefile += "#=============================\n"
         self.makefile += "# Py-simulation               \n"
         self.makefile += "#=============================\n"
-        self.makefile += "pyfsim: check ast_schedule.py \n"
+        self.makefile += "pyfsim: check check_flat ast_schedule.py \n"
         self.makefile += f"\t$(PYTHON) ast_fsimulator.py -f $(AST_XML_flat) -l $(LOG_VAL_DIR) --logic_value_dir {self.LOG_VAL_DIR} --sig_list_dir $(SIG_DIR) --start_cyc {self.start_cyc} --min_cyc {self.min_cyc} --max_cyc {self.max_cyc} --period {self.period} --design_dir {self.design_dir} --mode {self.pysim_mode}\n\n"
 
     def _gen_fsim(self):
@@ -137,7 +137,7 @@ class GenMakefile:
         self.makefile += "# Fault injection             \n"
         self.makefile += "#=============================\n"
         self.makefile += "fsim: fi_controller.py \n"
-        self.makefile += f"\t$(PYTHON) fi_controller.py -m '{self.fsim_mode}' -t {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv -d {self.design_dir} -f 'cd {self.design_dir} && ./fi_sim_veri' -s {self.design_dir}/sig_list/fsim_sig_table.json\n\n"
+        self.makefile += f"\t$(PYTHON) fi_controller.py -m '{self.fsim_mode}' -t {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}_unpruned.csv -d {self.design_dir} -f 'cd {self.design_dir} && ./fi_sim_veri' -s {self.design_dir}/sig_list/fsim_sig_table.json\n\n"
         self.makefile += "fsim_pruned: fi_controller.py \n"
         self.makefile += f"\t$(PYTHON) fi_controller.py -m '{self.fsim_mode}' -t {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}_pruned.csv -d {self.design_dir} -f 'cd {self.design_dir} && ./fi_sim_veri' -s {self.design_dir}/sig_list/fsim_sig_table.json\n\n"
 
@@ -145,6 +145,8 @@ class GenMakefile:
         self.makefile += "#=============================\n"
         self.makefile += "# Ace Analysis                \n"
         self.makefile += "#=============================\n"
+        self.makefile += "ace-pro: \n"
+        self.makefile += f"\t$(PYTHON) ace_analysis.py --rw_table_dir {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv --sig_list_dir {self.design_dir}/sig_list/fsim_sig_table.json --prune\n\n"
         self.makefile += "ace: \n"
         self.makefile += f"\t$(PYTHON) ace_analysis.py --rw_table_dir {self.design_dir}/prob_rw_table_{self.start_cyc}-{self.start_cyc+self.period-1}.csv --sig_list_dir {self.design_dir}/sig_list/fsim_sig_table.json\n\n"
 
@@ -167,21 +169,42 @@ if __name__ == "__main__":
     #        start_cyc=5, 
     #        period=2048,
     #        pysim_mode="period",
+    #        fsim_mode="ctrl"
+    #        )
+    #gen = GenMakefile(
+    #        design_name="picorv32_qsort", 
+    #        start_cyc=50000, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="ctrl"
+    #        )
+    #gen = GenMakefile(
+    #        design_name="picorv32_stencil", 
+    #        start_cyc=15000, 
+    #        period=2048,
+    #        pysim_mode="period",
     #        fsim_mode="data"
+    #        )
+    #gen = GenMakefile(
+    #        design_name="picorv32_string", 
+    #        start_cyc=9000, 
+    #        period=2048,
+    #        pysim_mode="period",
+    #        fsim_mode="ctrl"
     #        )
     #gen = GenMakefile(
     #        design_name="picorv32_firmware", 
     #        start_cyc=300000, 
     #        period=2048,
     #        pysim_mode="period",
-    #        fsim_mode="data"
+    #        fsim_mode="ctrl"
     #        )
     gen = GenMakefile(
             design_name="picorv32_dhrystone", 
-            start_cyc=5, 
-            period=20,
+            start_cyc=100000, 
+            period=2048,
             pysim_mode="period",
-            fsim_mode="ctrl"
+            fsim_mode="data"
             )
     #gen = GenMakefile(
     #        design_name="sha1", 
@@ -199,7 +222,7 @@ if __name__ == "__main__":
     #        )
     #gen = GenMakefile(
     #        design_name="tinyriscv_rsort", 
-    #        start_cyc=579, 
+    #        start_cyc=350000, 
     #        period=2048,
     #        pysim_mode="period",
     #        fsim_mode="data"
@@ -213,10 +236,10 @@ if __name__ == "__main__":
     #        )
     #gen = GenMakefile(
     #        design_name="tinyriscv_multiply", 
-    #        start_cyc=5600, 
+    #        start_cyc=50000, 
     #        period=2048,
     #        pysim_mode="period",
-    #        fsim_mode="data"
+    #        fsim_mode="ctrl"
     #        )
     #gen = GenMakefile(
     #        design_name="tinyriscv_towers", 

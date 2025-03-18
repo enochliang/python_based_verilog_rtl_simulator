@@ -348,7 +348,13 @@ class AceAnalysis:
         print(f"   - DUP fault count = {dup_fault_count}")
         print(f"   - redundant equvalent fault count = {redundant_eq_fault_count}")
 
-    def output_pruned_rw_table(self):
+    def count_ace(self):
+        unace_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start+1) for node in self.prop_graph_nodes if node.er_type == "unace")
+        redundant_eq_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start) for node in self.prop_graph_nodes if node.er_type == "ace")
+        print(f"   - un-ACE fault count = {unace_fault_count}")
+        print(f"   - redundant equvalent fault count = {redundant_eq_fault_count}")
+
+    def output_pruned_rw_table(self, prune_flag=True):
         self.rw_table_pruned = {"cycle":[cyc for cyc in range(self.start_cyc, self.start_cyc+self.tot_cyc)],"rw_event":[[]]*self.tot_cyc}
         start_cyc = self.start_cyc
         for idx, node in enumerate(self.prop_graph_nodes):
@@ -366,14 +372,17 @@ class AceAnalysis:
         #pprint.pp(self.rw_table_pruned)
 
         df = pd.DataFrame(self.rw_table_pruned)
-        new_rw_table_dir = rw_table_dir.replace(".csv","")+"_pruned.csv"
+        if not prune_flag:
+            new_rw_table_dir = rw_table_dir.replace(".csv","")+"_unpruned.csv"    
+        else:
+            new_rw_table_dir = rw_table_dir.replace(".csv","")+"_pruned.csv"
         df.to_csv(new_rw_table_dir)
-        ace_result = {"total_fault":self.tot_fault_num,
-                      "unACE_fault":self.unace_fault_count,
-                      "dup_fault":self.dup_fault_count,
-                      "eq_fault":self.redundant_eq_fault_count,
-                      "remain_fault":self.remained_fault
-                      }
+        #ace_result = {"total_fault":self.tot_fault_num,
+        #              "unACE_fault":self.unace_fault_count,
+        #              "dup_fault":self.dup_fault_count,
+        #              "eq_fault":self.redundant_eq_fault_count,
+        #              "remain_fault":self.remained_fault
+        #              }
         print(f"Dumped Pruned RW-table file: <{new_rw_table_dir}>")
 
 
@@ -392,6 +401,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="A simple example of argparse usage.")
     parser.add_argument('--rw_table_dir', type=str, help='RW-table directory')
     parser.add_argument("--sig_list_dir", type=str, help="Logic value path")
+    parser.add_argument("--prune", action='store_true', help="Pruning Flag")
     args = parser.parse_args()
 
     rw_table_dir = args.rw_table_dir
@@ -401,5 +411,9 @@ if __name__ == "__main__":
     ace.pre_ace_info()
     ace.prop_graph_construct()
     g = ace.igraph_construct()
-    ace.mark_masked()  # Add this line to apply the masking logic
-    ace.output_pruned_rw_table()
+    if args.prune:
+        ace.mark_masked()  # Add this line to apply the masking logic
+        ace.output_pruned_rw_table(prune_flag=True)
+    else:
+        ace.count_ace()
+        ace.output_pruned_rw_table(prune_flag=False)

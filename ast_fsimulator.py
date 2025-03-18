@@ -866,10 +866,10 @@ class FaultSimulatorExecute(SimulatorPrepare):
             ctrl_flist = {}
             for f in flist: 
                 ctrl_flist[(f[0],"ctrl")] = flist[f]
-            print(ctrl_flist)
-            print(node.name)
+            #print(ctrl_flist)
+            #print(node.name)
             self.merge_flist(ctrl_flist, node.fault_list)
-            print(node.fault_list)
+            #print(node.fault_list)
 
     def get_comb_sel_fault(self,node):
         if node.tag == "const":

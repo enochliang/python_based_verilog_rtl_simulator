@@ -4,17 +4,47 @@ configs = {
             "design_folder":"picorv32/benchmark_basicmath",
             "top_module_name":"picorv32",
             "tb_clk":"clk",
-            "tb_rst":"rst",
-            "top_hier":"top.uut",
+            "tb_rst":"resetn",
+            "top_hier":"uut",
             "min_cyc":5,
             "max_cyc":2675
+        },
+        "picorv32_qsort":{
+            "python_cmd":"python3",
+            "design_folder":"picorv32/benchmark_qsort",
+            "top_module_name":"picorv32",
+            "tb_clk":"clk",
+            "tb_rst":"resetn",
+            "top_hier":"uut",
+            "min_cyc":5,
+            "max_cyc":590000
+        },
+        "picorv32_string":{
+            "python_cmd":"python3",
+            "design_folder":"picorv32/benchmark_string",
+            "top_module_name":"picorv32",
+            "tb_clk":"clk",
+            "tb_rst":"resetn",
+            "top_hier":"uut",
+            "min_cyc":5,
+            "max_cyc":14752
+        },
+        "picorv32_stencil":{
+            "python_cmd":"python3",
+            "design_folder":"picorv32/benchmark_stencil",
+            "top_module_name":"picorv32",
+            "tb_clk":"clk",
+            "tb_rst":"resetn",
+            "top_hier":"uut",
+            "min_cyc":5,
+            "max_cyc":590000
         },
         "picorv32_firmware":{
             "python_cmd":"python3",
             "design_folder":"picorv32/benchmark_firmware",
             "top_module_name":"picorv32_axi",
             "tb_clk":"clk",
-            "tb_rst":"rst",
+            "tb_rst":"resetn",
             "top_hier":"top.uut",
             "min_cyc":5,
             "max_cyc":388059
@@ -27,7 +57,7 @@ configs = {
             "tb_rst":"resetn",
             "top_hier":"top.uut",
             "min_cyc":5,
-            "max_cyc":19112
+            "max_cyc":371627
         },
         "sha1":{
             "python_cmd":"python3",
@@ -61,7 +91,7 @@ configs = {
         },
             "tinyriscv_qsort":{
             "python_cmd":"python3",
-            "design_folder":"benchmark_qsort",
+            "design_folder":"tinyriscv/benchmark_qsort",
             "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",
@@ -71,7 +101,7 @@ configs = {
         },
         "tinyriscv_median":{
             "python_cmd":"python3",
-            "design_folder":"benchmark_median",
+            "design_folder":"tinyriscv/benchmark_median",
             "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",
@@ -81,7 +111,7 @@ configs = {
         },
         "tinyriscv_towers":{
             "python_cmd":"python3",
-            "design_folder":"benchmark_towers",
+            "design_folder":"tinyriscv/benchmark_towers",
             "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",
@@ -91,7 +121,7 @@ configs = {
         },
         "tinyriscv_vvadd":{
             "python_cmd":"python3",
-            "design_folder":"benchmark_vvadd",
+            "design_folder":"tinyriscv/benchmark_vvadd",
             "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",
@@ -101,7 +131,7 @@ configs = {
         },
         "tinyriscv_multiply":{
             "python_cmd":"python3",
-            "design_folder":"benchmark_multiply",
+            "design_folder":"tinyriscv/benchmark_multiply",
             "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",
@@ -111,7 +141,7 @@ configs = {
         },
         "tinyriscv_rsort":{
             "python_cmd":"python3",
-            "design_folder":"benchmark_rsort",
+            "design_folder":"tinyriscv/benchmark_rsort",
             "top_module_name":"tinyriscv",
             "tb_clk":"clk",
             "tb_rst":"rst",

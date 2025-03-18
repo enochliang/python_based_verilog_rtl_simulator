@@ -66,7 +66,7 @@ always@(posedge {CLK}) begin
       $fclose({FFI});
     end
     if({CNT_NAME}>=0)begin
-      {FFI} = $fopen({{"{FFI_DIR}_C",{CNT_STR},".txt"}},"w");
+      {FFI} = $fopen($sformatf("{FFI_DIR}_C%07d.txt", {CNT_NAME}),"w");
 '''
         for varname in sig_list["ff"]:
             string += f'      $fwrite(ffi_f,"%b\\n",{varname});\n'
