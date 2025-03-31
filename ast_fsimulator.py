@@ -1113,6 +1113,7 @@ class FaultSimulator(FaultSimulatorExecute):
     #        # simulation
     #        self.sim_1_cyc(cyc)
     #    self.dump_rw_table()
+import time
 
 if __name__ == "__main__":
     # Step 1: Create the parser
@@ -1142,6 +1143,7 @@ if __name__ == "__main__":
     else:
         log_dir = None
 
+    start_time = time.time()
 
     if args.file:
         ast_file = args.file
@@ -1151,3 +1153,9 @@ if __name__ == "__main__":
         #ast_sim = FaultSimulator(ast, start_cyc=205000, period=2048)
         ast_sim = FaultSimulator(ast, start_cyc=int(args.start_cyc), min_cyc=int(args.min_cyc), max_cyc=int(args.max_cyc), period=int(args.period), logic_val_dir=log_dir, logic_value_file_dir=args.logic_value_dir, sig_list_dir=args.sig_list_dir, design_dir=args.design_dir)
         ast_sim.simulate(mode=args.mode)
+
+
+    end_time = time.time()
+    exe_time = end_time - start_time
+    with open(f"{args.design_dir}/pysim_runtime.txt","w") as fp:
+        fp.write(f"{exe_time} sec")

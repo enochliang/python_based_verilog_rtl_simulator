@@ -5,6 +5,7 @@ import pandas as pd
 import ast
 import re
 from igraph import Graph  # Make sure to import igraph
+import dataloader
 
 # -------------------
 # ERNode Class
@@ -30,6 +31,7 @@ class ERNode:
         self.end = start
         self.parents = []
         self.er_type = "ace"
+        self.flag = "prop"
 
     @property
     def reg_name(self):
@@ -38,62 +40,6 @@ class ERNode:
     @property
     def start(self):
         return self._start
-
-# -------------------
-# RWTableLoader Class
-# -------------------
-class RWTableLoader:
-    """
-    Loads and processes a read/write (RW) event table from a CSV file for fault propagation analysis.
-
-    Attributes:
-        rw_table_file (str): Path to the CSV file containing RW events (default: "prob_rw_table.csv").
-        reg_prop_list (list): List of dictionaries mapping registers to propagation probabilities per cycle.
-        rw_table (pd.DataFrame): Loaded RW table as a pandas DataFrame.
-        rw_table_list (list): Processed list of RW events per cycle.
-        total_cycle (int): Total number of cycles in the RW table.
-        start_cyc (int): The starting cycle number from the table.
-    """
-    def __init__(self, rw_table_file: str = "prob_rw_table.csv"):
-        self.rw_table_file = rw_table_file
-        self.reg_prop_list = list()
-
-    def load(self):
-        """
-        Loads the RW table from CSV and processes it into a list of RW events and propagation probabilities.
-
-        The CSV is expected to have columns 'cycle' and 'rw_event', where 'rw_event' is a string representation
-        of a list of dictionaries containing read ('r'), write ('w'), stay ('stay'), and control ('ctrl') events.
-        """
-        self.rw_table = pd.read_csv(self.rw_table_file)
-        self.rw_table_list = list()
-        self.total_cycle = len(self.rw_table)
-        for idx, row in self.rw_table.iterrows():
-            cyc = row["cycle"]
-            if idx == 0:
-                self.start_cyc = cyc
-
-            rw_events = row["rw_event"]
-            rw_events = ast.literal_eval(rw_events)
-            rw_row = {}
-            prop_row = {}
-            for rw_event in rw_events:
-                rw_row[re.sub(r'\bgenblk\d+\.', '', rw_event["r"])] = {"w": set([(re.sub(r'\bgenblk\d+\.', '', w_event[0]),w_event[1]) for w_event in rw_event["w"]]), 
-                                         "stay": set([(re.sub(r'\bgenblk\d+\.', '', w_event[0]),w_event[1]) for w_event in rw_event["stay"]]), 
-                                         "ctrl": set([(re.sub(r'\bgenblk\d+\.', '', w_event[0]),w_event[1]) for w_event in rw_event["ctrl"]])}
-                if len(rw_event["stay"]) > 0:
-                    prop_row[re.sub(r'\bgenblk\d+\.', '', rw_event["r"])] = 1.0
-                else:
-                    mask_probs = [1.0 - prob for dst_reg, prob in set([w_event for w_event in rw_event["w"]] + 
-                                                                      [w_event for w_event in rw_event["ctrl"]])]
-                    tot_m_probs = 1.0
-                    for m_prob in mask_probs:
-                        tot_m_probs *= m_prob
-                    tot_p_probs = 1.0 - tot_m_probs
-                    prop_row[ re.sub(r'\bgenblk\d+\.', '', rw_event["r"]) ] = tot_p_probs
-
-            self.rw_table_list.append(rw_row)
-            self.reg_prop_list.append(prop_row)
 
 # -------------------
 # AceAnalysis Class
@@ -116,9 +62,7 @@ class AceAnalysis:
         igraph (Graph): igraph object representing the fault propagation graph (set by igraph_construct).
     """
     def __init__(self, ace_dir: str, sigtable_dir: str):
-        f = open(sigtable_dir, "r")
-        self.sig_dict = json.load(f)
-        f.close()
+        self.sig_dict = dataloader.sig_dict(sigtable_dir)
 
         self.last_cyc_er_id = {}
         self.reg_table = {}
@@ -128,12 +72,14 @@ class AceAnalysis:
             self.last_cyc_er_id[reg] = None
             self.tot_bit_num += self.sig_dict["ff"][reg]
 
-        self.rw_loader = RWTableLoader(ace_dir)
-        self.rw_loader.load()
-        self.rw_table = self.rw_loader.rw_table_list
-        self.tot_cyc = self.rw_loader.total_cycle
-        self.start_cyc = self.rw_loader.start_cyc
+        rw_load = dataloader.rw_table(ace_dir)
+        self.rw_table  = rw_load["rw_table_list"]
+        self.tot_cyc   = rw_load["total_cyc"]
+        self.start_cyc = rw_load["start_cyc"]
+
         self.tot_fault_num = self.tot_cyc * self.tot_bit_num
+
+        self.design_dir = "/".join(ace_dir.split("/")[:-1])
 
         self.prop_graph_nodes = []
         self.prop_graph_links = []
@@ -196,6 +142,7 @@ class AceAnalysis:
                     self.unACE_int.append(len(self.prop_graph_nodes))
                     self.last_cyc_er_id[reg] = len(self.prop_graph_nodes)
                     self.reg_table[reg].er_type = "unace"
+                    self.reg_table[reg].flag = "masked"
                     self.prop_graph_nodes.append(self.reg_table[reg])
                     self.reg_table[reg] = None
                 elif len(rw_events[reg]["w"]) + len(rw_events[reg]["ctrl"]) > 0:
@@ -263,6 +210,7 @@ class AceAnalysis:
         g.vs["start"] = [node.start for node in self.prop_graph_nodes]
         g.vs["end"] = [node.end for node in self.prop_graph_nodes]
         g.vs["er_type"] = [node.er_type for node in self.prop_graph_nodes]
+        g.vs["flag"] = [node.flag for node in self.prop_graph_nodes]
 
         edges = [(link[0], link[3]) for link in self.prop_graph_links]
         g.add_edges(edges)
@@ -275,6 +223,25 @@ class AceAnalysis:
         print(f"      Edges: {g.ecount()}")
 
         return g
+
+    def find_multi_ctrl_nodes(self,g):
+        # Precompute edge list with "path" attribute for faster access
+        edge_paths = g.es["path"]  # Single fetch of all edge "path" attributes
+        mul_c_node = set()
+    
+        # Iterate directly over vertices
+        for node_idx, vertex in enumerate(g.vs):
+            # Get outgoing edge indices once
+            out_edge_ids = g.incident(node_idx, mode="out")
+    
+            # Count "ctrl" edges using precomputed edge_paths
+            ctrl_count = sum(1 for eid in out_edge_ids if edge_paths[eid] == "ctrl")
+    
+            if ctrl_count > 1:
+                mul_c_node.add(node_idx)
+    
+        return mul_c_node
+
 
     def mark_masked(self):
         """
@@ -294,12 +261,12 @@ class AceAnalysis:
             duration = node.end - node.start + 1
             width = self.sig_dict["ff"][reg]
             unace_fault_count += duration * width
-            self.prop_graph_nodes[node_idx].er_type = "masked"
-            self.pg_graph.vs[node_idx]["er_type"] = "masked"
+            self.prop_graph_nodes[node_idx].flag = "masked"
+            self.pg_graph.vs[node_idx]["flag"] = "masked"
     
         # Print the number of initial 'unace' nodes marked as 'masked'
-        initial_masked_count = len(self.unACE_int)
-        print(f"   Initially marked {initial_masked_count} 'unace' nodes as 'masked'.")
+        #initial_masked_count = len(self.unACE_int)
+        #print(f"   Initially marked {initial_masked_count} 'unace' nodes as 'masked'.")
     
         # Step 2: Traverse the graph bottom-up using igraph
         # Get all nodes and their out-degrees (number of children)
@@ -312,20 +279,30 @@ class AceAnalysis:
         queue = deque([i for i, deg in enumerate(out_degrees) if deg == 0])
         visited = set()  # To avoid reprocessing nodes
     
+    
+        mul_c_node = self.find_multi_ctrl_nodes(g)
+        print("xxx")
+
         while queue:
             node_idx = queue.popleft()
             if node_idx in visited:
                 continue
             visited.add(node_idx)
+
     
+            # Add
+            if node_idx in mul_c_node:
+                continue
+
+
             # Check if all children of this node are 'masked'
             children = g.successors(node_idx)  # List of child indices
             if children:  # If node has children
-                all_children_masked = all(g.vs[child]["er_type"] == "masked" for child in children)
+                all_children_masked = all(g.vs[child]["flag"] == "masked" for child in children)
                 if all_children_masked:
                     # Mark the current node as 'masked' in both structures
-                    self.prop_graph_nodes[node_idx].er_type = "masked"
-                    g.vs[node_idx]["er_type"] = "masked"
+                    self.prop_graph_nodes[node_idx].flag = "masked"
+                    g.vs[node_idx]["flag"] = "masked"
     
             # Add parents (predecessors) to the queue if all their children have been processed
             parents = g.predecessors(node_idx)
@@ -333,20 +310,89 @@ class AceAnalysis:
                 parent_children = g.successors(parent_idx)
                 if all(child in visited for child in parent_children):
                     queue.append(parent_idx)
+
     
         # Step 3: Print summary for verification
-        masked_count = sum(1 for node in self.prop_graph_nodes if node.er_type == "masked")
+        
+        # The number of "masked node"
+        #masked_count = sum(1 for node in self.prop_graph_nodes if node.flag == "masked")
+        
+        # The origin number of un-ACE bits
         self.unace_fault_count = unace_fault_count
-        dup_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start+1) for node in self.prop_graph_nodes if node.er_type == "masked") - unace_fault_count
-        self.dup_fault_count = dup_fault_count
-        redundant_eq_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start) for node in self.prop_graph_nodes if node.er_type == "ace")
-        self.redundant_eq_fault_count = redundant_eq_fault_count
-        self.remained_fault = self.tot_fault_num - unace_fault_count - dup_fault_count - redundant_eq_fault_count
-        print(f"   Marked {masked_count} nodes as 'masked' in the graph.")
+        
+        # The pruned number of ACE bits
+        pruned_ace_fault_count = self.count_pruned_ace()
+        pruned_ace_data_fault_count = self.count_pruned_ace_data()
+        pruned_ace_ctrl_fault_count = self.count_pruned_ace_ctrl()
+        if pruned_ace_fault_count != (pruned_ace_data_fault_count+pruned_ace_ctrl_fault_count):
+            raise
+        pruned_dup_fault_count = self.count_pruned_dup()
+        
+        # DUP fault analysis
+        dup_fault_count = self.count_dup()
+        acepro_remained_fault = self.count_acepro_remain()
 
-        print(f"   - un-ACE fault count = {unace_fault_count}")
-        print(f"   - DUP fault count = {dup_fault_count}")
-        print(f"   - redundant equvalent fault count = {redundant_eq_fault_count}")
+        self.remained_fault = acepro_remained_fault + pruned_ace_fault_count
+        if pruned_ace_fault_count + acepro_remained_fault != self.remained_fault:
+            raise
+
+        if (self.tot_fault_num - unace_fault_count - pruned_ace_fault_count - pruned_dup_fault_count - dup_fault_count - acepro_remained_fault) != 0:
+            print("Total fault:",self.tot_fault_num)
+            print("UnACE fault:",unace_fault_count)
+            print("Pruned ACE fault:",pruned_ace_fault_count)
+            print("Pruned DUP fault:",pruned_dup_fault_count)
+            print("DUP fault:",dup_fault_count)
+            print("Remained fault after ace-pro",acepro_remained_fault)
+            raise
+
+        #print(f"   - 'fault count' of un-ACE bits \t= {unace_fault_count}")
+        #print(f"   - 'fault count' of pruned ACE bits \t= {pruned_ace_fault_count}")
+        #print(f"   - 'fault count' reduced DUP fault\t= {dup_fault_count}")
+        print("ACEPRO Fault Category:")
+        print("Total fault:",self.tot_fault_num)
+        print("  - [ACE] UnACE fault:",unace_fault_count)
+        print("  - [ACE] DUP fault:", dup_fault_count+pruned_dup_fault_count)
+        print("    - [ACEPRO] Pruned DUP fault:",pruned_dup_fault_count)
+        print("    - [ACEPRO] DUP fault:",dup_fault_count)
+        print("  - [ACE] Remained fault after ace",acepro_remained_fault+pruned_ace_fault_count)
+        print("    - [ACEPRO] Remained fault after ace-pro",acepro_remained_fault)
+        print("    - [ACEPRO] Pruned ACE fault:",pruned_ace_fault_count)
+        print("      - [ACEPRO] Pruned ACE fault (data):",pruned_ace_data_fault_count)
+        print("      - [ACEPRO] Pruned ACE fault (ctrl):",pruned_ace_ctrl_fault_count)
+
+
+    def count_pruned_ace(self):
+        pruned_ace_fault_count = sum(self.sig_dict["ff"][node.reg_name] for node in self.prop_graph_nodes if (node.flag == "masked") and (node.er_type == "ace"))
+        self.pruned_ace_fault_count = pruned_ace_fault_count
+        return pruned_ace_fault_count
+
+    def count_pruned_ace_data(self):
+        pruned_ace_data_fault_count = sum(self.sig_dict["ff"][node.reg_name] for node in self.prop_graph_nodes if (node.flag == "masked") and (node.er_type == "ace") and (len(self.rw_table[int(node.end)-int(self.start_cyc)][node.reg_name]["ctrl"]) == 0))
+        self.pruned_ace_data_fault_count = pruned_ace_data_fault_count
+        return pruned_ace_data_fault_count
+
+    def count_pruned_ace_ctrl(self):
+        pruned_ace_ctrl_fault_count = sum(self.sig_dict["ff"][node.reg_name] for node in self.prop_graph_nodes if (node.flag == "masked") and (node.er_type == "ace") and (len(self.rw_table[int(node.end)-int(self.start_cyc)][node.reg_name]["ctrl"]) > 0))
+        self.pruned_ace_ctrl_fault_count = pruned_ace_ctrl_fault_count
+        return pruned_ace_ctrl_fault_count
+
+
+    def count_pruned_dup(self):
+        pruned_dup_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start) for node in self.prop_graph_nodes if (node.flag == "masked") and (node.er_type == "ace"))
+        self.pruned_dup_fault_count = pruned_dup_fault_count
+        return pruned_dup_fault_count
+
+
+    def count_dup(self):
+        dup_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start) for node in self.prop_graph_nodes if (node.er_type == "ace") and (node.flag == "prop"))
+        self.dup_fault_count = dup_fault_count
+        return dup_fault_count
+
+    def count_acepro_remain(self):
+        acepro_remained_fault = sum(self.sig_dict["ff"][node.reg_name] for node in self.prop_graph_nodes if (node.flag == "prop") and (node.er_type == "ace"))
+        self.acepro_remained_fault = acepro_remained_fault
+        return acepro_remained_fault
+
 
     def count_ace(self):
         unace_fault_count = sum(self.sig_dict["ff"][node.reg_name]*(node.end-node.start+1) for node in self.prop_graph_nodes if node.er_type == "unace")
@@ -354,11 +400,11 @@ class AceAnalysis:
         print(f"   - un-ACE fault count = {unace_fault_count}")
         print(f"   - redundant equvalent fault count = {redundant_eq_fault_count}")
 
-    def output_pruned_rw_table(self, prune_flag=True):
-        self.rw_table_pruned = {"cycle":[cyc for cyc in range(self.start_cyc, self.start_cyc+self.tot_cyc)],"rw_event":[[]]*self.tot_cyc}
+    def output_removed_rw_table(self):
+        rm_rw_table = {"cycle":[cyc for cyc in range(self.start_cyc, self.start_cyc+self.tot_cyc)],"rw_event":[[]]*self.tot_cyc}
         start_cyc = self.start_cyc
         for idx, node in enumerate(self.prop_graph_nodes):
-            if node.er_type == "ace":
+            if (node.er_type == "ace") and (node.flag == "masked"):
                 r_reg = node.reg_name
                 r_cyc = node.end
                 rw_event = self.rw_table[r_cyc-start_cyc][r_reg]
@@ -366,25 +412,89 @@ class AceAnalysis:
                                 "w":list(rw_event["w"]),
                                 "ctrl":list(rw_event["ctrl"]),
                                 "stay":list(rw_event["stay"]),
-                                "start_cyc":node.start,
-                                "end_cyc":node.end}
-                self.rw_table_pruned["rw_event"][r_cyc-start_cyc] = self.rw_table_pruned["rw_event"][r_cyc-start_cyc]+[new_rw_event]
+                                "start_cyc":int(node.start),
+                                "end_cyc":int(node.end)}
+                rm_rw_table["rw_event"][r_cyc-start_cyc] = rm_rw_table["rw_event"][r_cyc-start_cyc]+[new_rw_event]
+
         #pprint.pp(self.rw_table_pruned)
 
-        df = pd.DataFrame(self.rw_table_pruned)
-        if not prune_flag:
-            new_rw_table_dir = rw_table_dir.replace(".csv","")+"_unpruned.csv"    
-        else:
-            new_rw_table_dir = rw_table_dir.replace(".csv","")+"_pruned.csv"
+        df = pd.DataFrame(rm_rw_table)
+        new_rw_table_dir = rw_table_dir.replace(".csv","")+"_removed.csv"
         df.to_csv(new_rw_table_dir)
-        #ace_result = {"total_fault":self.tot_fault_num,
-        #              "unACE_fault":self.unace_fault_count,
-        #              "dup_fault":self.dup_fault_count,
-        #              "eq_fault":self.redundant_eq_fault_count,
-        #              "remain_fault":self.remained_fault
-        #              }
-        print(f"Dumped Pruned RW-table file: <{new_rw_table_dir}>")
+        print(f"Dumped Removed RW-table file: <{new_rw_table_dir}>")
 
+    def output_ace_rw_table(self):
+        ace_rw_table = {"cycle":[cyc for cyc in range(self.start_cyc, self.start_cyc+self.tot_cyc)],"rw_event":[[]]*self.tot_cyc}
+        start_cyc = self.start_cyc
+        for idx, node in enumerate(self.prop_graph_nodes):
+            if (node.er_type == "ace"):
+                r_reg = node.reg_name
+                r_cyc = node.end
+                rw_event = self.rw_table[r_cyc-start_cyc][r_reg]
+                new_rw_event = {"r":r_reg,
+                                "w":list(rw_event["w"]),
+                                "ctrl":list(rw_event["ctrl"]),
+                                "stay":list(rw_event["stay"]),
+                                "start_cyc":int(node.start),
+                                "end_cyc":int(node.end)}
+                ace_rw_table["rw_event"][r_cyc-start_cyc] = ace_rw_table["rw_event"][r_cyc-start_cyc]+[new_rw_event]
+
+        #pprint.pp(self.rw_table_pruned)
+
+        df = pd.DataFrame(ace_rw_table)
+        new_rw_table_dir = rw_table_dir.replace(".csv","")+"_unpruned.csv"    
+        df.to_csv(new_rw_table_dir)
+        print(f"Dumped ACE RW-table file: <{new_rw_table_dir}>")
+
+    def output_acepro_rw_table(self, prune_flag=True):
+        acepro_rw_table = {"cycle":[cyc for cyc in range(self.start_cyc, self.start_cyc+self.tot_cyc)],"rw_event":[[]]*self.tot_cyc}
+        start_cyc = self.start_cyc
+        for idx, node in enumerate(self.prop_graph_nodes):
+            if (node.er_type == "ace") and (node.flag == "prop"):
+                r_reg = node.reg_name
+                r_cyc = node.end
+                rw_event = self.rw_table[r_cyc-start_cyc][r_reg]
+                new_rw_event = {"r":r_reg, 
+                                "w":list(rw_event["w"]),
+                                "ctrl":list(rw_event["ctrl"]),
+                                "stay":list(rw_event["stay"]),
+                                "start_cyc":int(node.start),
+                                "end_cyc":int(node.end)}
+                acepro_rw_table["rw_event"][r_cyc-start_cyc] = acepro_rw_table["rw_event"][r_cyc-start_cyc]+[new_rw_event]
+
+        #pprint.pp(self.rw_table_pruned)
+
+        df = pd.DataFrame(acepro_rw_table)
+        new_rw_table_dir = rw_table_dir.replace(".csv","")+"_pruned.csv"
+        df.to_csv(new_rw_table_dir)
+        print(f"Dumped ACE-PRO RW-table file: <{new_rw_table_dir}>")
+
+    def output_acepro_result(self):
+        ace_result = {"total_fault":int(self.tot_fault_num),
+                      "unACE_fault":int(self.unace_fault_count),
+                      "pruned_ACE_fault":int(self.pruned_ace_fault_count),
+                      "pruned_ACE_data_fault":int(self.pruned_ace_data_fault_count),
+                      "pruned_ACE_ctrl_fault":int(self.pruned_ace_ctrl_fault_count),
+                      "pruned_dup_fault_count":int(self.pruned_dup_fault_count),
+                      "dup_fault":int(self.dup_fault_count),
+                      "pro_remained_fault":int(self.acepro_remained_fault),
+                      "remain_fault":int(self.remained_fault)
+                      }
+        ace_result_file = f"{self.design_dir}/acepro_result.json"
+        with open(ace_result_file, 'w') as f:
+            json.dump(ace_result, f)
+            print(f"[File Dumped] file name = {ace_result_file}")
+
+    def output_ace_result(self):
+        ace_result = {"total_fault":int(self.tot_fault_num),
+                      "unACE_fault":int(self.unace_fault_count),
+                      "dup_fault":int(self.dup_fault_count + self.pruned_dup_fault_count),
+                      "remain_fault":int(self.remained_fault + self.acepro_remained_fault)
+                      }
+        ace_result_file = f"{self.design_dir}/ace_result.json"
+        with open(ace_result_file, 'w') as f:
+            json.dump(ace_result, f)
+            print(f"[File Dumped] file name = {ace_result_file}")
 
 
 # -------------------
@@ -411,9 +521,11 @@ if __name__ == "__main__":
     ace.pre_ace_info()
     ace.prop_graph_construct()
     g = ace.igraph_construct()
-    if args.prune:
-        ace.mark_masked()  # Add this line to apply the masking logic
-        ace.output_pruned_rw_table(prune_flag=True)
-    else:
-        ace.count_ace()
-        ace.output_pruned_rw_table(prune_flag=False)
+    # Start pruning
+    ace.mark_masked()  # Add this line to apply the masking logic
+
+    ace.output_ace_rw_table()
+    ace.output_acepro_result()
+    ace.output_acepro_rw_table()
+    ace.output_ace_result()
+    ace.output_removed_rw_table()

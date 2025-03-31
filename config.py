@@ -17,7 +17,7 @@ configs = {
             "tb_rst":"resetn",
             "top_hier":"uut",
             "min_cyc":5,
-            "max_cyc":590000
+            "max_cyc":5971295
         },
         "picorv32_string":{
             "python_cmd":"python3",
@@ -59,6 +59,16 @@ configs = {
             "min_cyc":5,
             "max_cyc":371627
         },
+        "aes":{
+            "python_cmd":"python3",
+            "design_folder":"aes",
+            "top_module_name":"aes_core",
+            "tb_clk":"tb_clk",
+            "tb_rst":"tb_reset_n",
+            "top_hier":"tb_aes_core.dut",
+            "min_cyc":5,
+            "max_cyc":244
+        },
         "sha1":{
             "python_cmd":"python3",
             "design_folder":"sha1",
@@ -89,7 +99,7 @@ configs = {
             "min_cyc":5,
             "max_cyc":225
         },
-            "tinyriscv_qsort":{
+        "tinyriscv_qsort":{
             "python_cmd":"python3",
             "design_folder":"tinyriscv/benchmark_qsort",
             "top_module_name":"tinyriscv",

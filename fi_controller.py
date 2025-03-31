@@ -80,6 +80,7 @@ class GenFaultList:
                     self.ctrl_fault_list[(cyc, idx, duration)] = [bit for bit in range(width)]
                     ctrl_fault_num += width
                 elif len(rw_row[r_event]["w"]) == 0:
+                    print(cyc,r_event,rw_row[r_event])
                     continue
                 else:
                     start_cyc = rw_row[r_event]["start_cyc"]
@@ -100,11 +101,12 @@ class GenFaultList:
 
 
 class FaultInjection(GenFaultList):
-    def __init__(self,sigtable_dir:str, hw_dir:str, ace_dir:str, fi_name:str="fi_sim_veri"):
+    def __init__(self,sigtable_dir:str, hw_dir:str, ace_dir:str, fi_name:str="fi_sim_veri", ace_mode:str="ace"):
         GenFaultList.__init__(self,sigtable_dir,ace_dir)
         self.hw_dir = hw_dir
         self.fi_name = fi_name
         self.fsim_exe_file = f"{self.fi_name} > fsim.log"
+        self.ace_mode = ace_mode
 
 
     def fault_inject(self, cyc, idx, bit):
@@ -242,16 +244,23 @@ class FaultInjection(GenFaultList):
 
 
         df_bit = pd.DataFrame(df_bit)
-        result_dir = f"{self.hw_dir}/fault_sim_result({mode})(bit).csv"
+        if self.ace_mode == "ace":
+            result_dir = f"{self.hw_dir}/fault_sim_result({mode})(bit)-ace.csv"
+        elif self.ace_mode == "acepro":
+            result_dir = f"{self.hw_dir}/fault_sim_result({mode})(bit).csv"
+        elif self.ace_mode == "rm":
+            result_dir = f"{self.hw_dir}/fault_sim_result({mode})(bit)-rm.csv"
+        else: 
+            raise
         df_bit.to_csv(result_dir)
         print(f"Dumped <{result_dir}>")
-        df_reg = pd.DataFrame(df_reg)
-        result_dir = f"{self.hw_dir}/fault_sim_result({mode})(reg).csv"
-        df_reg.to_csv(result_dir)
-        print(f"Dumped <{result_dir}>")
+        #df_reg = pd.DataFrame(df_reg)
+        #result_dir = f"{self.hw_dir}/fault_sim_result({mode})(reg).csv"
+        #df_reg.to_csv(result_dir)
+        #print(f"Dumped <{result_dir}>")
 
 
-                            
+import time                        
 
 if __name__ == "__main__":
     # Step 1: Create the parser
@@ -259,6 +268,7 @@ if __name__ == "__main__":
 
     # Step 2: Define arguments
     parser.add_argument("-m",'--mode', type=str, help="fault injection mode [total, data, ctrl]")
+    parser.add_argument("-a",'--ace_mode', type=str, help="fault injection mode [ace, acepro, rm]")
     parser.add_argument("-t",'--rwtable_dir', type=str, help="rw-table directory")
     parser.add_argument("-d",'--hw_dir', type=str, help="hardware directory")
     parser.add_argument("-f", "--fi_name", type=str, help="fault simulator directory")                  # Positional argument
@@ -267,11 +277,22 @@ if __name__ == "__main__":
     # Step 3: Parse the arguments
     args = parser.parse_args()
 
+    start_time = time.time()
+
     inj = FaultInjection(
               sigtable_dir = args.sigtable_dir, 
               hw_dir = args.hw_dir, 
               ace_dir = args.rwtable_dir, 
-              fi_name = args.fi_name
+              fi_name = args.fi_name,
+              ace_mode = args.ace_mode
           )
 
     inj.execute(args.mode)
+
+    end_time = time.time()
+    exe_time = end_time - start_time
+
+    with open(f"{args.hw_dir}/fsim_runtime-{args.mode}-{args.ace_mode}.txt","w") as fp:
+        fp.write(f"{exe_time} sec")
+
+
