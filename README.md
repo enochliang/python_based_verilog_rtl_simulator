@@ -59,11 +59,11 @@ The tool calculates propagation probability using the following logic:
 
 | Module | Description |
 | :--- | :--- |
-| `ast_simulator.py` | [cite_start]The core engine for RTL semantic simulation and fault propagation. |
-| `rtl_functions.py` | [cite_start]Library for 3-value logic (0, 1, X) operations including arithmetic, bitwise, and reduction. |
-| `ast_schedule.py` | [cite_start]Handles topological sorting to ensure input signals are calculated before use. |
-| `ace_analysis.py` | [cite_start]Main flow for integrating RW Tables to calculate ACE/un-ACE bits. |
-| `dataloader.py` | [cite_start]Loads CSV-based RW Tables and JSON signal tables. |
+| `ast_simulator.py` | The core engine for RTL semantic simulation and fault propagation. |
+| `rtl_functions.py` | Library for 3-value logic (0, 1, X) operations including arithmetic, bitwise, and reduction. |
+| `ast_schedule.py` | Handles topological sorting to ensure input signals are calculated before use. |
+| `ace_analysis.py` | Main flow for integrating RW Tables to calculate ACE/un-ACE bits. |
+| `dataloader.py` | Loads CSV-based RW Tables and JSON signal tables. |
 
 ---
 
@@ -75,7 +75,7 @@ The tool calculates propagation probability using the following logic:
 * Verilator 4.x/5.x
 
 ### 2. Generate AST
-[cite_start]Use Verilator to produce the XML representation of your design[cite: 120]:
+Use Verilator to produce the XML representation of your design:
 ```bash
 verilator -xml-output --bbox-sys -Wall --top-module <TopModule> <Design>.v
 ```
@@ -98,7 +98,7 @@ sim.init_fault_list()
 ---
 
 ## Known Issues & Limitations
-* **`rtl_functions.py`**: `val_neq()` contains dead code [cite: 160][cite_start], and `val_sel()` has a `NameError` (undefined `width` variable) when `start_bit == 0`.
+* **`rtl_functions.py`**: `val_neq()` contains dead code, and `val_sel()` has a `NameError` (undefined `width` variable) when `start_bit == 0`.
 * **`ast_node_define.py`**: The `_children` attribute is currently a class variable; it should be initialized in `__init__` to avoid shared state between instances.
 * **`rw_split.py`**: Currently an empty skeleton module.
 * **Naming**: `dataloader.py` uses regex to strip `genblk` prefixes, which may require updates for complex nested generate blocks.
