@@ -70,9 +70,9 @@ The tool calculates propagation probability using the following logic:
 ## Quick Start Guide
 
 ### 1. Requirements
-* [cite_start]Python 3.9+
-* [cite_start]`lxml`, `pandas`
-* [cite_start]Verilator 4.x/5.x
+* Python 3.9+
+* `lxml`, `pandas`
+* Verilator 4.x/5.x
 
 ### 2. Generate AST
 [cite_start]Use Verilator to produce the XML representation of your design[cite: 120]:
